@@ -9,6 +9,10 @@ source https://nuget.org/api/v2
 #     nuget FSharp.Core ~> 4.1.0 redirects: force
 
 nuget FSharp.Core ~> 4.0.0.1 redirects: force
+nuget MathNet.Numerics
+nuget MathNet.Numerics.FSharp
+nuget Newtonsoft.Json
+nuget System.Data.SQLite
 
 group Build
   source https://nuget.org/api/v2
