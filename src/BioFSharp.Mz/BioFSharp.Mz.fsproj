@@ -52,11 +52,25 @@
   <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
   <Import Project="..\..\.paket\paket.targets" />
   <ItemGroup>
-    <Compile Include="Library.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />
     <Content Include="App.config" />
+    <Compile Include="Peak.fs" />
+    <Compile Include="PeakArray.fs" />
+    <Compile Include="PeakList.fs" />
+    <Compile Include="Caching.fs" />
+    <Compile Include="SignalDetection.fs" />
+    <Compile Include="ChargeState.fs" />
+    <Compile Include="SearchDB.fs" />
+    <Compile Include="MzIdentMLModel.fs" />
+    <Compile Include="Fragmentation.fs" />
+    <Compile Include="TheoreticalSpectra.fs" />
+    <Compile Include="SearchEngineResult.fs" />
+    <Compile Include="SequestLike.fs" />
+    <Compile Include="AndromedaLike.fs" />
+    <Compile Include="SearchEngineGeneric.fs" />
+    <Compile Include="Quantification.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="MathNet.Numerics">
@@ -66,12 +80,38 @@
       <HintPath>..\..\packages\MathNet.Numerics.FSharp\lib\portable-net45+sl5+netcore45+MonoAndroid1+MonoTouch1\MathNet.Numerics.FSharp.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Data.SQLite">
-      <HintPath>..\..\packages\System.Data.SQLite.Core\lib\net451\System.Data.SQLite.dll</HintPath>
+      <HintPath>..\..\packages\System.Data.SQLite.Core\lib\net45\System.Data.SQLite.dll</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BioFSharp\src\BioFSharp.IO\BioFSharp.IO.fsproj">
+      <Name>BioFSharp.IO</Name>
+      <Project>{5e3592d6-ebe7-409d-acf5-541dbe44e891}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\BioFSharp\src\BioFSharp\BioFSharp.fsproj">
+      <Name>BioFSharp</Name>
+      <Project>{2a955278-f002-4ebd-ae86-8b548ebf1209}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\FSharp.Care\src\FSharp.Care.IO\FSharp.Care.IO.fsproj">
+      <Name>FSharp.Care.IO</Name>
+      <Project>{2bd8f01a-03ce-4907-9449-b35b73eec916}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\FSharp.Care\src\FSharp.Care\FSharp.Care.fsproj">
+      <Name>FSharp.Care</Name>
+      <Project>{dd7886a9-5c35-45ad-952c-4394a8af2306}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7')">
