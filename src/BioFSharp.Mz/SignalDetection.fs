@@ -624,24 +624,24 @@ module SignalDetection =
                     // sum up the intensity and find the highest point. If there are multiple
                     // points with the maxIntensity value, take the one with the highest m/z.
                     let mutable maxIntensity = 0.0 
-                    let mutable intensityAccumulator = 0.0 
                     let mutable maxIntensityMZ = 0.0
+                    let mutable intensityAccumulator = 0.0 
                     for j = startFittingPoint to endFittingPoint do 
                         intensityAccumulator <- intensityAccumulator + intensityData.[j] 
                         if intensityData.[j] >= maxIntensity
                             then
-                                maxIntensity   <- intensityData.[j]
                                 maxIntensityMZ <- mzData.[j]
+                                maxIntensity   <- intensityData.[j]
                     
-                    if i>1 && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) < mzTol && (maxIntensity > yPeakValues.[xPeakValues.Count-1] ) then 
+                    if i>1 && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) < mzTol && (maxIntensity > yPeakValues.[xPeakValues.Count-1] && maxIntensity > yThreshold ) then 
                             xPeakValues.[xPeakValues.Count-1] <- maxIntensityMZ
                             yPeakValues.[yPeakValues.Count-1] <- maxIntensity
                      
-                    elif i>1 && maxIntensityMZ <> xPeakValues.[xPeakValues.Count-1] && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) > mzTol && maxIntensityMZ > yThreshold then //0.1 //(maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) <> mzTol
+                    elif i>1 && maxIntensityMZ <> xPeakValues.[xPeakValues.Count-1] && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) > mzTol && maxIntensity > yThreshold then 
                             xPeakValues.Add maxIntensityMZ
                             yPeakValues.Add maxIntensity
                     
-                    elif i=1 then
+                    elif i=1 && maxIntensity > yThreshold then
                             xPeakValues.Add maxIntensityMZ
                             yPeakValues.Add maxIntensity
                 //
