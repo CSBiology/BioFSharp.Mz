@@ -564,7 +564,7 @@ module SignalDetection =
  
                 let snr = maxCorr / noises.[noiseBin]
                 let row = maxRowofCol.[maxCol]
-                if snr > minSnr   then // && row > 0
+                if snr > minSnr && row > 0 then // 
                     let nLines = allLines.Count
                     if ( nLines > 0) then
                         let mzNewLine = convertColToMz mzData maxCol 
