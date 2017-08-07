@@ -27,13 +27,16 @@ let ms1DataTest =
     |> List.head
 #time
 /// Returns a tuple of float arrays (mzData[]*intensityData[]) each containing the processed data
+///
+let pickPeaksMS1 mzData intensityData = SignalDetection.Wavelet.toCentroidWithRicker2D 2 1. 0.1 0. 95. mzData intensityData
+let data = SignalDetection.windowToCentroidBy pickPeaksMS1 ms1DataTest.Mass ms1DataTest.Intensity 7.5 583.3
 
 let centroidMS1Spectrum = 
         SignalDetection.Wavelet.toCentroidWithRicker2D 2 1. 0.1 0. 95. ms1DataTest.Mass ms1DataTest.Intensity
         
 let (paddmz,paddInt) = SignalDetection.Padding.paddDataWith 1. 150 0.1 50. ms1DataTest.Mass ms1DataTest.Intensity 
 let centroidMS1Spectrum2 = 
-    SignalDetection.Wavelet.toCentroidWithRicker2D 10 1. 0.1 0. 70. paddmz paddInt
+    SignalDetection.Wavelet.toCentroidWithRicker2D 10 1. 0.1 0. 95. paddmz paddInt
 #time
 //Async.Parallel [for i = 1 to 10 do yield async {
 ////let centroidMS1Spectrum2 = 
@@ -41,9 +44,11 @@ let centroidMS1Spectrum2 =
 (*** define-output:spectrum1 ***)
 
 /// Creates point charts of the raw and the processed data
+Chart.Point(fst data,snd data,Name="raw data")
+|> Chart.Show
 [
     Chart.Point( ms1DataTest.Mass, ms1DataTest.Intensity,Name="raw data");
-    Chart.Point(fst centroidMS1Spectrum, snd centroidMS1Spectrum,Name="centroid")
+    Chart.Point(fst data,snd data,Name="raw data")
 ]
 |> Chart.Combine
 |> Chart.withSize(500.,500.)

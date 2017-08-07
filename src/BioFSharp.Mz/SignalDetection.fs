@@ -609,7 +609,6 @@ module SignalDetection =
                 finalX, finalY 
             else
                 for i = 0 to allLines.Count-1 do
-                    let mzCol = convertColToMz mzData allLines.[i].Col 
                     let mzColIdx = allLines.[i].Col  / 2
                     let row = allLines.[i].Row
                     let currentScaling = scalings.[row]
@@ -659,7 +658,7 @@ module SignalDetection =
             let windowMaxLow = 5
             let windowMaxHigh = 5
             let initialWidthScaling = 1.; 
-            let finalWidthScaling = 6.; 
+            let finalWidthScaling = 7.; 
             let incrementScaling = (finalWidthScaling-initialWidthScaling) / double(nScales-1);
     
             let scalings = 
