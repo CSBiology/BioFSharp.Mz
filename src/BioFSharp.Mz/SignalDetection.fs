@@ -491,19 +491,16 @@ module SignalDetection =
 
         ///
         let getSNRFilteredPeakLines noise_perc mzTol nScales mzData (allLines:Collections.Generic.List<RidgeLine>) (corrMatrix: float[,]) =   ///(snrs:Collections.Generic.List<float>)                                         
-            let minSnr = 1.
+            let minSnr = 1.2
             let corrMatrixLength = corrMatrix.[0,*].Length
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // step 1: find maxima in each column (row = scales, columns = m/z)
             /// contains scaling with the highest correlationvalue for each Column
             let maxRowofCol = Array.create (corrMatrixLength) 0 
-            for i = 0 to corrMatrixLength-1 do 
-                
-                let mutable corrMax = 0.0
-                
+            for i = 0 to corrMatrixLength-1 do             
+                let mutable corrMax = 0.0            
                 for j = 0 to nScales-1 do 
-                
                     if corrMatrix.[j,i] > corrMax then
                         corrMax <- corrMatrix.[j,i]
                         maxRowofCol.[i] <- j //Eintrag des scalings mit der höchsten correlation

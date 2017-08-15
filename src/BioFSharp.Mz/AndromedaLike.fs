@@ -114,9 +114,12 @@ module AndromedaLike =
                             let lossNeutral = 
                                 if BioFSharp.Mz.Fragmentation.isNeutralLoss f then 
                                     match f with 
+                                        
                                     | AminoAcids.Mod(aa, modiL) ->  
-                                        let mass = (acc + currentMass - ( massfunction (AminoAcids.isotopicLabelFunc f (modiL.Head.Modify Formula.emptyFormula)) ) )
-                                        Some (createTag (true,(NeutralLoss ionSeries)) mass)
+                                    //TODO: Implement neutral loss logic    
+                                        None
+                                    //    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f (modiL.Head.Modify Formula.emptyFormula)) ) )
+                                    //    Some (createTag (true,(NeutralLoss ionSeries)) mass)
                                     | _ -> None
                                 else None
                             let tmp = []
