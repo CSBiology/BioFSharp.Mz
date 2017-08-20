@@ -629,18 +629,18 @@ module SignalDetection =
                                 maxIntensityMZ <- mzData.[j]
                                 maxIntensity   <- intensityData.[j]
                     
-                    if i>1 && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) < mzTol && (maxIntensity > yPeakValues.[xPeakValues.Count-1] && maxIntensity > yThreshold ) then 
-                            xPeakValues.[xPeakValues.Count-1] <- maxIntensityMZ
-                            yPeakValues.[yPeakValues.Count-1] <- maxIntensity
+                    if xPeakValues.Count = 0 && maxIntensity > yThreshold then
+                        xPeakValues.Add maxIntensityMZ
+                        yPeakValues.Add maxIntensity
+                        
+                    elif xPeakValues.Count > 0 && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) < mzTol && (maxIntensity > yPeakValues.[xPeakValues.Count-1] && maxIntensity > yThreshold ) then 
+                        xPeakValues.[xPeakValues.Count-1] <- maxIntensityMZ
+                        yPeakValues.[yPeakValues.Count-1] <- maxIntensity
                      
-                    elif i>1 && maxIntensityMZ <> xPeakValues.[xPeakValues.Count-1] && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) > mzTol && maxIntensity > yThreshold then 
-                            xPeakValues.Add maxIntensityMZ
-                            yPeakValues.Add maxIntensity
+                    elif xPeakValues.Count > 0 && maxIntensityMZ <> xPeakValues.[xPeakValues.Count-1] && (maxIntensityMZ - xPeakValues.[xPeakValues.Count-1] ) > mzTol && maxIntensity > yThreshold then 
+                        xPeakValues.Add maxIntensityMZ
+                        yPeakValues.Add maxIntensity
                     
-                    elif i=1 && maxIntensity > yThreshold then
-                            xPeakValues.Add maxIntensityMZ
-                            yPeakValues.Add maxIntensity
-
                 let finalX = xPeakValues.ToArray()
                 let finalY = yPeakValues.ToArray()
                 finalX, finalY                
