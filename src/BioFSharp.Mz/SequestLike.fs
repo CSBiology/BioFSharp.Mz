@@ -209,7 +209,7 @@ module SequestLike =
     /// Calculates sequest-like deltaCN score
     ///  (Xcorr(top hit) - Xcorr(n)) ÷ Xcorr(top hit). Thus, the deltaCn for the top hit is
     ///  (Xcorr(top hit) - Xcorr(top hit)) ÷ Xcorr(top hit) = 0.
-    let calcDeltaCN (sourceList:SearchEngineResult list) =
+    let calcDeltaCN (sourceList:SearchEngineResult<'a> list) =
         match sourceList with
         | h1::rest -> 
             sourceList

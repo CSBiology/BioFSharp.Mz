@@ -23,11 +23,21 @@ module AndromedaLike =
         DependentPeaks = dependentPeaks  
         }
 
+    type MatchingScore = {
+        Score   : float 
+        N       : int 
+        K       : int
+        Q       : int
+        Matches : PeakAnnotation list 
+        }
+    
+    let createMatchingScore score n k q matches = {
+     Score = score; N = n ; K = k; Q = q ;Matches = matches
+    }
     ///
-    let nrOfBins (scanlimits:float*float)  = 
+    let calcNrOfBins (scanlimits:float*float)  = 
         let lowerLimit,upperLimit = scanlimits
-        ((upperLimit-lowerLimit) / 100. / 2.)  
-        |> (*) 2.
+        ((upperLimit-lowerLimit) / 100.)
         |> ceil
         |> int
 
@@ -40,10 +50,7 @@ module AndromedaLike =
         let spectrumData = spectrumData |> Array.filter (fun (mz,intensity) -> mz >= lowerLimit && mz <= upperLimit) 
         // Number of bins with width of 100 Thomson (th = m/z)
         let nrOfBins = 
-            ((upperLimit-lowerLimit) / 100. / 2.)  
-            |> (*) 2.
-            |> ceil
-            |> int
+            calcNrOfBins scanlimits
         ///
         let binnedData = 
             let tmp = Array.create nrOfBins []
@@ -83,76 +90,94 @@ module AndromedaLike =
         
             |]
         jaggedIntensitySortedBins
-            
+    
+    //
+    let iterateWhile xData (test: 'a -> bool) =
+        let rec loop (xData: 'a list) currentIdx =
+            match xData with 
+            | h::[] -> 
+               match test xData.[currentIdx] with 
+               | true  -> Some currentIdx   
+               | false -> loop xData (currentIdx+1)
+            | []    -> 
+                None 
+        loop xData 0             
+                
     ///
     let ions (massfunction:Formula.Formula -> float) (ionSeries: IonSeries) (aal:AminoAcids.AminoAcid list)  = 
-        let rec series aminoList fragMasses acc =
+        let rec series aminoList waterLoss aminoLoss fragMasses acc =
             match aminoList with
             | f::rest    -> 
+                            let waterLoss' = 
+                                if BioFSharp.Mz.Fragmentation.isWaterLoss f then
+                                    true
+                                else waterLoss
+                            let aminoLoss' = 
+                                if BioFSharp.Mz.Fragmentation.isAminoLoss f then
+                                    true
+                                else aminoLoss
+                            
                             let currentMass = massfunction (AminoAcids.formula f)
-                       
                             let mainIonMass     = acc + currentMass 
-
                             let mainPeak        = 
-
                                 createTag (true,(Main ionSeries)) mainIonMass
-                        
+                                              
                             let lossNH3Ion  = 
-                                let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))) 
-                                if BioFSharp.Mz.Fragmentation.isAminoLoss f then 
+                                if aminoLoss' then 
+                                    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))) 
                                     Some (createTag (true,(LossNH3 ionSeries)) mass)
                                 else  
-                                    Some (createTag (false,(LossNH3 ionSeries)) mass)
+                                    None
 
                             let lossH2OIon   = 
-                                let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f Formula.Table.H2O))) 
-                                if BioFSharp.Mz.Fragmentation.isWaterLoss f then 
+                                if waterLoss' then 
+                                    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f Formula.Table.H2O))) 
                                     Some (createTag (true,(LossH20 ionSeries)) mass)
                                 else  
-                                    Some (createTag (false,(LossH20 ionSeries)) mass)
-                        
-                            let lossNeutral = 
-                                if BioFSharp.Mz.Fragmentation.isNeutralLoss f then 
-                                    match f with 
+                                    None
+                            //let lossNeutral = 
+                            //    if BioFSharp.Mz.Fragmentation.isNeutralLoss f then 
+                            //        match f with 
+                            //        | AminoAcids.Mod(aa, modiL) ->  
+                            //        //TODO: Implement neutral loss logic    
+                            //            None
+                            //        //    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f (modiL.Head.Modify Formula.emptyFormula)) ) )
+                            //        //    Some (createTag (true,(NeutralLoss ionSeries)) mass)
+                            //        | _ -> None
+                            //    else None
                                         
-                                    | AminoAcids.Mod(aa, modiL) ->  
-                                    //TODO: Implement neutral loss logic    
-                                        None
-                                    //    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f (modiL.Head.Modify Formula.emptyFormula)) ) )
-                                    //    Some (createTag (true,(NeutralLoss ionSeries)) mass)
-                                    | _ -> None
-                                else None
-                            let tmp = []
                             let dependentPeaks = 
-                                lossNH3Ion::lossH2OIon::lossNeutral::tmp 
-                                |> List.filter (fun annotPeak -> annotPeak.IsSome)
-                                |> List.map (fun annotPeak -> annotPeak.Value)
-
+                                [lossNH3Ion;lossH2OIon;]//lossNeutral] 
+                                |> List.fold (fun acc annotPeak -> 
+                                                match annotPeak with 
+                                                | Some peak -> peak :: acc
+                                                | None      -> acc
+                                             ) []
+                        
+                                
                             let peakFam =
                                 createPeakFamily mainPeak dependentPeaks
-                            series (rest) (peakFam::fragMasses) mainIonMass
-        
+                            series (rest) waterLoss' aminoLoss'  (peakFam::fragMasses) mainIonMass
             | _          -> fragMasses
-
         ///
         match ionSeries with 
         | IonSeries.B -> 
-            series aal [] 0.0 
+            series aal false false [] 0.0 
             |> List.rev
-        | IonSeries.Y -> 
-            series (aal |> List.rev) [] (massfunction Formula.Table.H2O) 
+        | IonSeries.Y ->
+            let ySeries = (aal |> List.rev)
+            series ySeries false false [] (massfunction Formula.Table.H2O) 
         | _           -> []
+            
 
-   
     ///
     let predictOf (massfunction:Formula.Formula -> float) (scanlimits:float*float) (maxcharge:float) (aal:list<AminoAcids.AminoAcid>) =
-        let lowerLimit,upperLimit = scanlimits
 
         //a series missing
         let b'bNbH_list = ions massfunction IonSeries.B aal
         let y'yNyH_list = ions massfunction IonSeries.Y aal
 
-        let rec recloop (ions) (charge) (b'bNbH_list:List<PeakFamily<Tag<bool*IonTypes,float>>>) (y'yNyH_list:List<PeakFamily<Tag<bool*IonTypes,float>>>) =
+        let rec recloop ions (charge) (b'bNbH_list:List<PeakFamily<Tag<bool*IonTypes,float>>>) (y'yNyH_list:List<PeakFamily<Tag<bool*IonTypes,float>>>) =
             match b'bNbH_list,y'yNyH_list with
 
             | (bFamily)::restb,(yFamily)::resty ->  
@@ -165,7 +190,7 @@ module AndromedaLike =
                 let bDependent =
                     bFamily.DependentPeaks
                         |> List.fold (fun acc dependent -> 
-                                        if charge <= 1. || (fst dependent.Meta) = true then
+                                        if charge <= 1. then 
                                             let bPeak = 
                                                 createPeak (Mass.toMZ dependent.Data charge) 1.
                                             (createPeakAnnotation (snd dependent.Meta) bPeak) :: acc
@@ -184,7 +209,7 @@ module AndromedaLike =
                 let yDependent =
                     yFamily.DependentPeaks
                         |> List.fold (fun acc dependent -> 
-                                        if charge <= 1. || (fst dependent.Meta) = true then
+                                        if charge <= 1. then 
                                             let yPeak = 
                                                 createPeak (Mass.toMZ dependent.Data charge) 1.
                                             (createPeakAnnotation (snd dependent.Meta) yPeak) :: acc
@@ -204,13 +229,11 @@ module AndromedaLike =
         if maxcharge > 1. then         
             [| for z = 1. to 2. do
                 yield! recloop [] z b'bNbH_list y'yNyH_list |] 
-            |> Array.filter (fun peak -> peak.MainPeak.Data.Mz >= lowerLimit && peak.MainPeak.Data.Mz <= upperLimit)
-            // Can probably be removed
+           // Can probably be removed
             |> Array.sortBy (fun peak -> peak.MainPeak.Data.Mz)
         else 
             recloop [] 1. b'bNbH_list y'yNyH_list
-            |> List.filter (fun peak -> peak.MainPeak.Data.Mz >= lowerLimit && peak.MainPeak.Data.Mz <= upperLimit)
-            // Can probably be removed
+             // Can probably be removed
             |> List.sortBy (fun peak -> peak.MainPeak.Data.Mz)
             |> List.toArray
 
@@ -226,7 +249,7 @@ module AndromedaLike =
         | Some _    -> true
         | None      -> false
 
-    let hasMatchingPeakPPM (mzMatchingTolerancePPM: float)  (tarmz: float) (observBinnedSpect: ((float*float) list) list)  =
+    let hasMatchingPeakPPM (mzMatchingTolerancePPM: float) (tarmz: float) (observBinnedSpect: ((float*float) list) list)  =
         ///
         let targetBin = findBinIdx tarmz
         if targetBin < 0 then false 
@@ -236,7 +259,7 @@ module AndromedaLike =
         | Some _    -> true
         | None      -> false
 
-
+    ///
     let countMatches (scanlimits:float*float) (mzMatchingTolerance: float) (theoSpect: PeakFamily<PeakAnnotation> []) (observBinnedSpect:int* ((float*float) list) list ) =    
         ///
         let lowerLimit,upperLimit = scanlimits
@@ -247,10 +270,10 @@ module AndromedaLike =
         let mutable nWithNeutralAcc     = 0
         let mutable kWithOutNeutralAcc  = 0
         let mutable kWithNeutralAcc     = 0
-
-        let rec findMatches (mzMatchingTolerance: float) (theoSpect: PeakFamily<PeakAnnotation> []) (observBinnedSpect: ((float*float) list) list ) idx nWithOutNeutral nWithNeutral kWithOutNeutral kWithNeutral =
+        let matchAcc = ResizeArray()
+        let rec findMatches (mzMatchingTolerance: float) (theoSpect: PeakFamily<PeakAnnotation> []) (observBinnedSpect: ((float*float) list) list ) idx nWithOutNeutral nWithNeutral kWithOutNeutral kWithNeutral matchesWithOutNeutral =
             if idx = theoSpect.Length then
-                nWithOutNeutral, nWithNeutral, kWithOutNeutral, kWithNeutral
+                nWithOutNeutral, nWithNeutral, kWithOutNeutral, kWithNeutral, matchesWithOutNeutral
             else
                 let currentPeakFam = theoSpect.[idx]
                 //
@@ -260,87 +283,128 @@ module AndromedaLike =
                 kWithOutNeutralAcc  <- 0
                 kWithNeutralAcc     <- 0
 
+                if currentPeakFam.MainPeak.Data.Mz >= lowerLimit && currentPeakFam.MainPeak.Data.Mz <= upperLimit then                
+                    if hasMatchingPeakPPM mzMatchingTolerance currentPeakFam.MainPeak.Data.Mz observBinnedSpect = true then
+                        // raise ns
+                        nWithOutNeutralAcc  <- 1
+                        nWithNeutralAcc     <- 1     
+                        // raise ks                          
+                        kWithOutNeutralAcc  <- 1
+                        kWithNeutralAcc     <- 1
+                        matchAcc.Add currentPeakFam.MainPeak
+                        currentPeakFam.DependentPeaks 
+                        |> List.iter ( fun dependentAnnotPeak ->
+                                        // Peak not within bounds loop further. 
+                                        if dependentAnnotPeak.Data.Mz >= lowerLimit && dependentAnnotPeak.Data.Mz <= upperLimit then 
+                                             if hasMatchingPeakPPM mzMatchingTolerance dependentAnnotPeak.Data.Mz observBinnedSpect = true then
+                                             //Successful match: raise n and k
+                                                match dependentAnnotPeak.Meta with
+                                                //If NeutralLoss occurs only raise the neutralLossAccs 
+                                                | IonTypes.NeutralLoss _ ->
+                                                    nWithNeutralAcc     <- nWithNeutralAcc    + 1                               
+                                                    kWithNeutralAcc     <- kWithNeutralAcc    + 1
 
-                if hasMatchingPeakPPM mzMatchingTolerance currentPeakFam.MainPeak.Data.Mz observBinnedSpect = true then
-                    // raise ns
-                    nWithOutNeutralAcc  <- 1
-                    nWithNeutralAcc     <- 1     
-                    // raise ks                          
-                    kWithOutNeutralAcc  <- 1
-                    kWithNeutralAcc     <- 1
-                
-                    currentPeakFam.DependentPeaks 
-                    |> List.iter ( fun dependentAnnotPeak -> 
+                                                | _                      ->
+                                                    // raise ns
+                                                    nWithOutNeutralAcc  <- nWithOutNeutralAcc + 1
+                                                    nWithNeutralAcc     <- nWithNeutralAcc    + 1     
+                                                    // raise ks                      
+                                                    kWithOutNeutralAcc  <- kWithOutNeutralAcc + 1
+                                                    kWithNeutralAcc     <- kWithNeutralAcc    + 1       
+                                                    matchAcc.Add dependentAnnotPeak
+                                             else 
+                                             //Unsuccessful match: raise n
+                                                match dependentAnnotPeak.Meta with 
+                                                |  IonTypes.NeutralLoss _ ->
+                                                    nWithNeutralAcc     <- nWithNeutralAcc    + 1
 
-                                     if hasMatchingPeakPPM mzMatchingTolerance dependentAnnotPeak.Data.Mz observBinnedSpect = true then
-                                     //Successful match: raise n and k
-                                        match dependentAnnotPeak.Meta with
-                                        //If NeutralLoss occurs only raise the neutralLossAccs 
-                                        | IonTypes.NeutralLoss _ ->
-                                            nWithNeutralAcc     <- nWithNeutralAcc    + 1                               
-                                            kWithNeutralAcc     <- kWithNeutralAcc    + 1
-
-                                        | _                      ->
+                                                | _                       ->      
+                                                    nWithOutNeutralAcc  <- nWithOutNeutralAcc + 1
+                                                    nWithNeutralAcc     <- nWithNeutralAcc    + 1   
+                                        else 
                                             nWithOutNeutralAcc  <- nWithOutNeutralAcc + 1
-                                            nWithNeutralAcc     <- nWithNeutralAcc    + 1     
-                                                                  
-                                            kWithOutNeutralAcc  <- kWithOutNeutralAcc + 1
-                                            kWithNeutralAcc     <- kWithNeutralAcc    + 1                                          
-                                     else 
-
-                                     //Unsuccessful match: raise n
-                                        match dependentAnnotPeak.Meta with 
-                                        |  IonTypes.NeutralLoss _ ->
-                                            nWithNeutralAcc     <- nWithNeutralAcc    + 1
-
-                                        | _                       ->      
-                                            nWithOutNeutralAcc  <- nWithOutNeutralAcc + 1
-                                            nWithNeutralAcc     <- nWithNeutralAcc    + 1                              
-                                  )  
-
-                    findMatches mzMatchingTolerance theoSpect observBinnedSpect (idx+1) (nWithOutNeutral + nWithOutNeutralAcc) (nWithNeutral + nWithNeutralAcc) (kWithOutNeutral + kWithOutNeutralAcc) (kWithNeutralAcc + kWithNeutral)
-            
+                                            nWithNeutralAcc     <- nWithNeutralAcc    + 1  
+                                      )  
+                        findMatches mzMatchingTolerance theoSpect observBinnedSpect (idx+1) (nWithOutNeutral + nWithOutNeutralAcc) (nWithNeutral + nWithNeutralAcc) (kWithOutNeutral + kWithOutNeutralAcc) (kWithNeutralAcc + kWithNeutral) matchesWithOutNeutral
+                    else 
+                        // No matching Peak. Raise n.
+                        findMatches mzMatchingTolerance theoSpect observBinnedSpect (idx+1) (nWithOutNeutral+1) (nWithNeutral+1) kWithOutNeutral kWithNeutral matchAcc
                 else 
-                    // No matching Peak. Raise boths ks and both idx.
-                    findMatches mzMatchingTolerance theoSpect observBinnedSpect (idx+1) (nWithOutNeutral+1) (nWithNeutral+1) kWithOutNeutral kWithNeutral
+                    // Peak not within bounds raise n 
+                    findMatches mzMatchingTolerance theoSpect observBinnedSpect (idx+1) (nWithOutNeutral+1) (nWithNeutral+1) kWithOutNeutral kWithNeutral matchAcc
 
-        let (nWithOutNeutral, nWithNeutral, kWithOutNeutral,kWithNeutral)  = findMatches mzMatchingTolerance theoSpect binnedSpec 0 0 0 0 0
-        (nWithOutNeutral, nWithNeutral, kWithOutNeutral, kWithNeutral) 
+        let (nWithOutNeutral, nWithNeutral, kWithOutNeutral,kWithNeutral,matchesWithOutNeutral)  = findMatches mzMatchingTolerance theoSpect binnedSpec 0 0 0 0 0 matchAcc
+        (nWithOutNeutral, nWithNeutral, kWithOutNeutral, kWithNeutral,matchesWithOutNeutral) 
 
-    ///
-    let gammLn x = MathNet.Numerics.SpecialFunctions.GammaLn(x)
+    let scoreFuncImpl n k topx =
+        let topx' = float topx
+        let mutable acc = 0.
+        for j = k to n do 
+            let binomialCoeff = MathNet.Numerics.SpecialFunctions.Binomial(n,j)
+            let p1 = (topx'/100.)**(j |> float)
+            let p2 = (1.-(topx'/100.)) ** (float (n-j))
+            acc <- acc + (binomialCoeff * p1 * p2)
+        -10.*Math.Log10(acc) 
+    
+    let massCorrection mass = 
+        0.024*(mass - 600.)
 
-    ///
-    let lnProb (n:float) (k:float) (lnp:float) (lnq:float)  =
-        let score = 
-            -k * lnp - (n - k) * lnq -  gammLn (n + 1.) + gammLn (k + 1.) + gammLn (n - k + 1.); 
-        score
+    let modCorrection nMod = 
+        match nMod with 
+        | 0  -> 42.
+        | 1  -> 28.
+        | 2  -> 22.
+        | 3  -> 16.
+        | 4  -> 9.
+        | 5  -> 5.
+        | 6  -> 2.
+        | _  -> 0.
+    
+    let cleavageCorrection nCleave consecutiveCleavage =
+        match nCleave with 
+        | 0 -> 53.2
+        | 1 -> 
+            if consecutiveCleavage then 
+                42.1
+            else 
+                31.1
+        | 2 -> 17. 
+        |_  -> 0.
 
-    ///
-    let scoreFuncImpl n k topx =     
-        let topx' = topx |> float
-        let p1  = Math.Min(topx'/100.,0.5)
-        let lnp = Math.Log(p1)
-        let lnq = Math.log2(1. - p1)
-        let mutable p = 0.
-        for i = k to n do
-            let n' = n |> float
-            let k' = i |> float
-            p <- p + Math.Exp( - lnProb n'  k' lnp lnq )
-        p <- -Math.Log(p)
-        10. * p / Math.Log(10.)
-
-    let scoreTheoVsRecordedSpec scanlimits matchingTolPPM theoSpec binnedRecSpec= 
+        
+    let scoreTheoVsRecordedSpec scanlimits charge matchingTolPPM (lookUpResult:LookUpResult<'a>) theoSpec binnedRecSpec= 
         binnedRecSpec
         |> Array.map (fun (q,l) -> q, countMatches scanlimits matchingTolPPM theoSpec (q,l))
-        |> Array.map (fun (q,(nWo,nWi,kWo,kWi)) -> 
-                                let score1 = scoreFuncImpl nWo kWo q
-                                let score2 = scoreFuncImpl nWi kWi q 
-                                if score1 > score2 then score1 else score2
+        |> Array.map (fun (q,(nWo,nWi,kWo,kWi,matchesWithoutNeutral)) -> 
+                                
+                                let massCorr = massCorrection lookUpResult.Mass
+                                let modCorr  = modCorrection 0
+                                let cleavageCorr = cleavageCorrection 0 false
+                                let aSeriesSimulator = 
+                                    if charge > 1 then
+                                        2 * lookUpResult.BioSequence.Length
+                                    else
+                                        lookUpResult.BioSequence.Length
+                                let rawScore1 = scoreFuncImpl (nWo+aSeriesSimulator) kWo q
+                                let rawScore2 = scoreFuncImpl (nWi+aSeriesSimulator) kWi q 
+                                if rawScore1 > rawScore2 then 
+                                    createMatchingScore (rawScore1 + massCorr + modCorr + cleavageCorr - 100.) nWo kWo q (matchesWithoutNeutral |> Seq.toList)
+                                else 
+                                    createMatchingScore (rawScore2 + massCorr + modCorr + cleavageCorr - 100.) nWi kWi q (matchesWithoutNeutral |> Seq.toList)
                         )
         |> Array.max 
 
-    let calcDeltaAndorScore (sourceList:SearchEngineResult list) =
+    let calcDeltaAndorScore (sourceList:SearchEngineResult<MatchingScore> list) =
+        match sourceList with
+        | h1::rest -> 
+            sourceList
+            |> List.map
+                (fun sls ->
+                    let deltaAndroScore = (h1.Score.Score - sls.Score.Score) / h1.Score.Score
+                    { sls with DeltaCN = deltaAndroScore } )      
+        | []       -> []
+
+    let calcDeltaAndorScoreBy (sourceList:SearchEngineResult<float> list) =
         match sourceList with
         | h1::rest -> 
             sourceList
@@ -349,7 +413,6 @@ module AndromedaLike =
                     let deltaAndroScore = (h1.Score - sls.Score) / h1.Score
                     { sls with DeltaCN = deltaAndroScore } )      
         | []       -> []
-
     ///
     let calcAndromedaLikeScoresRevDecoy (massfunction:Formula.Formula -> float) qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) chargeState isolationWindowTargetMz (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) spectrumID =
         //
@@ -373,17 +436,17 @@ module AndromedaLike =
                                 let theoSpec = 
                                     predictOf BioFSharp.Formula.monoisoMass scanlimits fCharge sequence
                                 // Calculates score for real sequence
-                                let targetAndroScore = scoreTheoVsRecordedSpec scanlimits matchingTolPPM theoSpec binnedRecSpec
+                                let targetAndroScore = scoreTheoVsRecordedSpec scanlimits chargeState matchingTolPPM lookUpResult theoSpec binnedRecSpec
                                 let targetAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetAndroScore nan
 
                                 // Calculates score for reversed decoy sequence
                                 let decoySec = sequence |> List.rev
                                 let theoSpecDecoy = predictOf BioFSharp.Formula.monoisoMass scanlimits fCharge decoySec 
-                                let decoyAndroScore =  scoreTheoVsRecordedSpec scanlimits matchingTolPPM theoSpecDecoy binnedRecSpec
+                                let decoyAndroScore =  scoreTheoVsRecordedSpec scanlimits chargeState matchingTolPPM lookUpResult theoSpecDecoy binnedRecSpec
                                 let decoyAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyAndroScore nan 
                                 targetAndroResult :: decoyAndroResult :: acc                        
                          ) []
-        calcDeltaAndorScore (ides  |> List.sortBy (fun sls -> - sls.Score))  
+        calcDeltaAndorScore (ides  |> List.sortBy (fun sls -> - sls.Score.Score))  
 
 
     let getTheoSpecs (massfunction:Formula.Formula -> float) scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) =
@@ -414,15 +477,15 @@ module AndromedaLike =
                                 let theoSpec = 
                                     theoreticalSpectrum.TheoSpec
                                 // Calculates score for real sequence
-                                let targetAndroScore = scoreTheoVsRecordedSpec scanlimits matchingTolPPM theoSpec binnedRecSpec
-                                let targetAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetAndroScore nan
+                                let targetAndroScore = scoreTheoVsRecordedSpec scanlimits chargeState matchingTolPPM lookUpResult theoSpec binnedRecSpec
+                                let targetAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetAndroScore.Score nan
                                 
                                 let theoSpecDecoy = 
                                     theoreticalSpectrum.DecoyTheoSpec
-                                let decoyAndroScore =  scoreTheoVsRecordedSpec scanlimits matchingTolPPM theoSpecDecoy binnedRecSpec
-                                let decoyAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyAndroScore nan 
+                                let decoyAndroScore =  scoreTheoVsRecordedSpec scanlimits chargeState matchingTolPPM lookUpResult theoSpecDecoy binnedRecSpec
+                                let decoyAndroResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyAndroScore.Score nan
                                 targetAndroResult :: decoyAndroResult :: acc     
                      ) []
 
-        calcDeltaAndorScore (ides  |> List.sortBy (fun sls -> - sls.Score))        
+        calcDeltaAndorScoreBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
     

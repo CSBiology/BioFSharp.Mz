@@ -10,7 +10,7 @@ module SearchEngineResult =
         | AndromedaLike = 0 
         | SEQUESTLike   = 1
 
-    type SearchEngineResult = {
+    type SearchEngineResult<'a> = {
         SearchEngine    : SearchEngine
         SpectrumID      : string;     
         ModSequenceID   : int
@@ -23,7 +23,7 @@ module SearchEngineResult =
         MeasuredMass    : float;
         TheoMass        : float;            
         PeptideLength   : int;
-        Score           : float;
+        Score           : 'a;
         DeltaCN         : float; }
     
     ///

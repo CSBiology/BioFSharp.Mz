@@ -598,8 +598,8 @@ module SignalDetection =
 
         /// 
         let refinePeaks yThreshold mzTol (scalings: float[]) (mzData:float []) (intensityData:float [])  (allLines: ResizeArray<RidgeLine>) (xSpacingAvg:float []) =          
-            let xPeakValues = ResizeArray<float>()
-            let yPeakValues = ResizeArray<float>()
+            let xPeakValues = ResizeArray<float>(5000)
+            let yPeakValues = ResizeArray<float>(5000)
             if allLines.Count = 0 then 
                 let finalX = xPeakValues.ToArray()
                 let finalY = yPeakValues.ToArray()
@@ -640,7 +640,7 @@ module SignalDetection =
                     elif i=1 && maxIntensity > yThreshold then
                             xPeakValues.Add maxIntensityMZ
                             yPeakValues.Add maxIntensity
-                //
+
                 let finalX = xPeakValues.ToArray()
                 let finalY = yPeakValues.ToArray()
                 finalX, finalY                

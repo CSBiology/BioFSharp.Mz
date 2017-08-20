@@ -422,14 +422,14 @@ module Quantification =
             
                 
 
-        //
+        // TODO: Add to FSharp.Care
         let iterateTo step xData startIdx (test: 'a -> bool) =
             let rec loop  (xData: 'a []) currentIdx =
                 if currentIdx <= 0 then None
                 elif currentIdx >= xData.Length-1 then None
                 else                                              
                     match test xData.[currentIdx] with 
-                    | x when x = true -> Some currentIdx   
+                    | true -> Some currentIdx   
                     | _               -> loop xData (currentIdx+step) 
             loop xData (startIdx+step) 
 
