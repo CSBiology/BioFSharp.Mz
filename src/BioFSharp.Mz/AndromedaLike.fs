@@ -91,17 +91,17 @@ module AndromedaLike =
             |]
         jaggedIntensitySortedBins
     
-    //
-    let iterateWhile xData (test: 'a -> bool) =
-        let rec loop (xData: 'a list) currentIdx =
-            match xData with 
-            | h::[] -> 
-               match test xData.[currentIdx] with 
-               | true  -> Some currentIdx   
-               | false -> loop xData (currentIdx+1)
-            | []    -> 
-                None 
-        loop xData 0             
+    // Todo add to Fsharp.Care
+    //let iterateWhile xData (test: 'a -> bool) =
+    //    let rec loop (xData: 'a list) currentIdx =
+    //        match xData with 
+    //        | h::[] -> 
+    //           match test xData.[currentIdx] with 
+    //           | true  -> Some currentIdx   
+    //           | false -> loop xData (currentIdx+1)
+    //        | []    -> 
+    //            None 
+    //    loop xData 0             
                 
     ///
     let ions (massfunction:Formula.Formula -> float) (ionSeries: IonSeries) (aal:AminoAcids.AminoAcid list)  = 
@@ -380,13 +380,8 @@ module AndromedaLike =
                                 let massCorr = massCorrection lookUpResult.Mass
                                 let modCorr  = modCorrection 0
                                 let cleavageCorr = cleavageCorrection 0 false
-                                let aSeriesSimulator = 
-                                    if charge > 1 then
-                                        2 * lookUpResult.BioSequence.Length
-                                    else
-                                        lookUpResult.BioSequence.Length
-                                let rawScore1 = scoreFuncImpl (nWo+aSeriesSimulator) kWo q
-                                let rawScore2 = scoreFuncImpl (nWi+aSeriesSimulator) kWi q 
+                                let rawScore1 = scoreFuncImpl (nWo) kWo q
+                                let rawScore2 = scoreFuncImpl (nWi) kWi q 
                                 if rawScore1 > rawScore2 then 
                                     createMatchingScore (rawScore1 + massCorr + modCorr + cleavageCorr - 100.) nWo kWo q (matchesWithoutNeutral |> Seq.toList)
                                 else 
