@@ -258,46 +258,41 @@ module Fragmentation =
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A) aal
 
         ///
-        let bOfBioList(massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let bOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B) aal
 
         ///
-        let cSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let cOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.C) aal
 
         ///
-        let xyzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xyzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
         ///
-        let xySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xyOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y) aal
 
         ///
-        let xzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Z) aal
 
         ///
-        let yzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let yzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
         ///
-        let xSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X) aal
 
         ///
-        let ySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let yOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y) aal
 
         ///
-        let zSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let zOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
 
-        ///
-        let bySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
-            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
-
- 
  
  
  //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
