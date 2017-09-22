@@ -8,7 +8,6 @@ module Fragmentation =
     open BioFSharp
     open BioFSharp.IO
 
-
     let waterLossSet = set [AminoAcids.Ser;AminoAcids.Thr;AminoAcids.Glu;AminoAcids.Asp;]
     let aminoLossSet = set [AminoAcids.Arg;AminoAcids.Lys;AminoAcids.Gln;AminoAcids.Asn;]
 
@@ -19,130 +18,301 @@ module Fragmentation =
         aminoLossSet.Contains(a)
 
     //TODO: Implement neutral loss logic 
-    let isNeutralLoss a = 
-        match a with 
-        | AminoAcids.Mod (aa,_) -> false
-        | _                     -> false
+    //let isNeutralLoss a = 
+    //    match a with 
+    //    | AminoAcids.Mod (aa,_) -> false
+    //    | _                     -> false
+    [<AutoOpenAttribute>]
+    module private BioList =
 
-    module BioList =
+        open BioFSharp.Mz.Peaks
+        open BioFSharp.Mz.Ions
+        ///
+        let private calcBorYIonFragMass (massfunction:Formula.Formula -> float) acc aa = 
+            acc + massfunction (AminoAcids.formula aa)
         
-       /// <summary>
-        ///   Computes uncharged mass series of a-,b-,c- ions
-        /// </summary>
         ///
-        /// <param name="aal">list of aminoacids </param>
-        /// <remarks>result is uncharged use <c>Mass.toMZ</c></remarks>
-        /// <returns>uncharged mass series of a-,b-,c- ions</returns>   
-        let abcSeries (massFunc: Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =    
-            let rec series aminoList fragMasses acc =
-                match aminoList with
-                | f::s::rest -> let currentMass = massFunc (AminoAcids.formula f)
-                                let a' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f  Formula.Table.CO))
-                                let b' = acc + currentMass 
-                                let c' = acc + currentMass + (massFunc (AminoAcids.isotopicLabelFunc s Formula.Table.NH3))
-                                series (s::rest) ((a',b',c')::fragMasses) b'
-                | f::rest    -> let currentMass = massFunc (AminoAcids.formula f)
-                                let a' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.CO))
-                                let b' = acc + currentMass 
-                                let c' = nan
-                                series rest ((a',b',c')::fragMasses) b'
-                | _          ->  fragMasses
-            (series aal [] 0.0) |> List.rev
-
-
-        /// <summary>
-        ///   Computes uncharged mass series of x-,y-,z- ions
-        /// </summary>
-        ///
-        /// <param name="aal"> List of aminoacids </param>
-        /// <remarks> Result is uncharged use <c>Mass.toMZ</c> </remarks>
-        /// <returns> Uncharged mass series of x-,y-,z- ions </returns>   
-        let xyzSeries (massFunc: Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =    
-            let rec series aminoList fragMasses acc =
-                match aminoList with
-                | f::s::rest -> let currentMass = massFunc (AminoAcids.formula f)
-                                let x' = acc + currentMass + (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.CO)) 
-                                let y' = acc + currentMass 
-                                let z' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))
-                                series (s::rest) ((x',y',z')::fragMasses) y'
-                | f::rest    -> let currentMass = massFunc (AminoAcids.formula f)
-                                let x' = nan
-                                let y' = acc + currentMass
-                                let z' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))
-                                series rest ((x',y',z')::fragMasses) y'
-                | _          -> fragMasses
-            (series (aal|> List.rev) [] (massFunc Formula.Table.H2O))  
-
-
-        /// <summary>
-        ///   Computes uncharged mass series of x-,y-,z- ions
-        ///   with neutral water loss
-        /// </summary>
-        ///
-        /// <param name="aal"> List of aminoacids </param>
-        /// <remarks> Result is uncharged use <c>Mass.toMZ</c> </remarks>
-        /// <returns> Uncharged mass series of x-,y-,z- ions with neutral water loss </returns>   
-        //  a,b,c with neutral water loss do not exist (except the residual dependant onces)
-        let xyzSeriesWaterLoss (massFunc: Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =    
-            let rec series aminoList fragMasses acc =
-                match aminoList with
-                | f::s::rest -> let currentMass = massFunc (AminoAcids.formula f)
-                                let x' = acc + currentMass + (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.CO)) 
-                                let y' = acc + currentMass 
-                                let z' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))
-                                series (s::rest) ((x',y',z')::fragMasses) y'
-                | f::rest    -> let currentMass = massFunc (AminoAcids.formula f)
-                                let x' = nan
-                                let y' = acc + currentMass
-                                let z' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.NH3))
-                                series rest ((x',y',z')::fragMasses) y'
-                | _          -> fragMasses
-            (series (aal|> List.rev) [] (0.0))  
-
-    
-
-        /// <summary>
-        ///   Computes uncharged mass series of a-,b-,c- ions
-        ///   with neutral ammonia loss
-        /// </summary>
-        ///
-        /// <param name="aal"> List of aminoacids </param>
-        /// <remarks> Result is uncharged use <c>Mass.toMZ</c> </remarks>
-        /// <returns> Uncharged mass series of a-,b-,c- ions with neutral ammonia loss </returns>   
-        //  x,y,z with neutral amonium loss do not exist (except the residual dependant onces)
-        let abcSeriesAmmoniaLoss (massFunc: Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
-            let rec series aminoList fragMasses acc =
-                match aminoList with
-                | f::rest    -> let currentMass = massFunc (AminoAcids.formula f)                            
-                                let a' = acc + currentMass - (massFunc (AminoAcids.isotopicLabelFunc f Formula.Table.CO))
-                                let b' = acc + currentMass
-                                let c' = nan
-                                series rest ((a',b',c')::fragMasses) b'
-                | _          ->  fragMasses
+        let private calcAIonFragMass (massfunction:Formula.Formula -> float) acc aa =
+            acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
         
-            if aal.Length > 0 then
-                let fistAmino = List.head aal
-                let ammonia = (massFunc (AminoAcids.isotopicLabelFunc fistAmino Formula.Table.NH3))
-                (series aal [] (- ammonia)) |> List.rev
-            else
-                []
+        ///
+        let private calcCIonFragMass (massfunction:Formula.Formula -> float) acc aa =
+            acc + massfunction (AminoAcids.formula aa) + (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))
 
+        ///
+        let private calcXIonFragMass (massfunction:Formula.Formula -> float) acc aa =
+            acc + massfunction (AminoAcids.formula aa) + (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
 
+        ///
+        let private calcZIonFragMass (massfunction:Formula.Formula -> float) acc aa =
+            acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))
+       
+        ///
+        let private createBIonTaggedMass (massfunction:Formula.Formula -> float) acc aa = 
+            TaggedMass.createTaggedMass IonTypeFlag.B (calcBorYIonFragMass massfunction acc aa)
 
-               
-    //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
+        ///
+        let private createAIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+            TaggedMass.createTaggedMass IonTypeFlag.A (calcAIonFragMass massfunction acc aa)
+
+        ///
+        let private createCIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+            TaggedMass.createTaggedMass IonTypeFlag.C (calcCIonFragMass massfunction acc aa)
+
+        ///
+        let private createYIonTaggedMass (massfunction:Formula.Formula -> float) acc aa = 
+            TaggedMass.createTaggedMass IonTypeFlag.Y (calcBorYIonFragMass massfunction acc aa)
+        
+        ///
+        let private createXIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+            TaggedMass.createTaggedMass IonTypeFlag.X (calcXIonFragMass massfunction acc aa)
+
+        ///
+        let private createZIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+            TaggedMass.createTaggedMass IonTypeFlag.Z (calcZIonFragMass massfunction acc aa)
+
+        ///
+        let private peptideLadderElementOf (mainIonF: (Formula.Formula -> float) -> float -> AminoAcids.AminoAcid -> TaggedMass.TaggedMass) massfunction waterloss aminoloss acc (aa:AminoAcids.AminoAcid) = 
+            //        
+            let mainPeak = mainIonF massfunction acc aa    
+            ///
+            let lossNH3Ion  = 
+                if aminoloss then 
+                    let mass = (mainPeak.Mass - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))) 
+                    Some (TaggedMass.createTaggedNH3Loss mainPeak.Iontype mass)
+                else  
+                    None
+            ///
+            let lossH2OIon  = 
+                if waterloss then 
+                    let mass = (mainPeak.Mass - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.H2O))) 
+                    Some (TaggedMass.createTaggedH2OLoss mainPeak.Iontype mass)
+                else  
+                    None
+            ///
+            let dependentPeaks = 
+                [lossNH3Ion;lossH2OIon;]//lossNeutral] 
+                |> List.fold (fun acc annotPeak -> 
+                                match annotPeak with 
+                                | Some peak -> peak :: acc
+                                | None      -> acc
+                                ) []
+            createPeakFamily mainPeak dependentPeaks
+
+        ///
+        let abcfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
+            ///
+            let rec series aminoList waterLoss aminoLoss fragMasses acc =
+                match aminoList with
+                | aa::aa'::rest    -> 
+                    let waterLoss'  = waterLoss || (isWaterLoss aa)
+                    let aminoLoss'  = aminoLoss || (isAminoLoss aa)
+                    let bPeakFam = 
+                        peptideLadderElementOf createBIonTaggedMass massfunction waterLoss' aminoLoss' acc aa
+                    let aPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.A) then
+                            peptideLadderElementOf createAIonTaggedMass massfunction waterLoss' aminoLoss' acc aa 
+                            |> Some 
+                        else 
+                            None
+                    let cPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.C) then
+                            peptideLadderElementOf createCIonTaggedMass massfunction waterLoss' aminoLoss' acc aa 
+                            |> Some 
+                        else 
+                            None
+                    let peakFamilies =  
+                        if ionSeries.HasFlag(IonTypeFlag.B) then 
+                            [aPeakFam;Some bPeakFam;cPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                        else 
+                            [aPeakFam;cPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                    series (aa'::rest) waterLoss' aminoLoss' (peakFamilies@fragMasses) bPeakFam.MainPeak.Mass
+                | aa::rest     ->
+                    let waterLoss'  = waterLoss || (isWaterLoss aa)
+                    let aminoLoss'  = aminoLoss || (isAminoLoss aa)
+                    let bPeakFam = 
+                        peptideLadderElementOf createBIonTaggedMass massfunction waterLoss' aminoLoss' acc aa
+                    let aPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.A) then
+                            peptideLadderElementOf createAIonTaggedMass massfunction waterLoss' aminoLoss' acc aa 
+                            |> Some 
+                        else 
+                            None
+                    let peakFamilies =  
+                        if ionSeries.HasFlag(IonTypeFlag.B) then 
+                            [aPeakFam;Some bPeakFam;]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                        else 
+                            [aPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                    series [] waterLoss' aminoLoss' (peakFamilies@fragMasses) bPeakFam.MainPeak.Mass
+                | []          -> 
+                    fragMasses
+            series aal false false [] 0.0 
+            |> List.rev
+
+        ///
+        let xyzfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
+            ///
+            let rec series aminoList waterLoss aminoLoss fragMasses acc =
+                match aminoList with
+                | aa::aa'::rest    -> 
+                    let waterLoss'  = waterLoss || (isWaterLoss aa)
+                    let aminoLoss'  = aminoLoss || (isAminoLoss aa)
+                    let yPeakFam = 
+                        peptideLadderElementOf createYIonTaggedMass massfunction waterLoss' aminoLoss' acc aa
+                    let xPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.X) then
+                            peptideLadderElementOf createXIonTaggedMass massfunction waterLoss' aminoLoss' acc aa |> Some 
+                        else 
+                            None
+                    let zPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.Z) then
+                            peptideLadderElementOf createZIonTaggedMass massfunction waterLoss' aminoLoss' acc aa |> Some 
+                        else 
+                            None
+                    let peakFamilies =  
+                        if ionSeries.HasFlag(IonTypeFlag.Y) then 
+                            [zPeakFam;Some yPeakFam;xPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                        else 
+                            [zPeakFam;xPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                    series (aa'::rest) waterLoss' aminoLoss' (peakFamilies@fragMasses) yPeakFam.MainPeak.Mass
+                | aa::rest     ->
+                    let waterLoss'  = waterLoss || (isWaterLoss aa)
+                    let aminoLoss'  = aminoLoss || (isAminoLoss aa)
+                    let yPeakFam = 
+                        peptideLadderElementOf createYIonTaggedMass massfunction waterLoss' aminoLoss' acc aa
+                    let zPeakFam = 
+                        if ionSeries.HasFlag(IonTypeFlag.Z) then
+                            peptideLadderElementOf createZIonTaggedMass massfunction waterLoss' aminoLoss' acc aa |> Some 
+                        else 
+                            None
+                    let peakFamilies =  
+                        if ionSeries.HasFlag(IonTypeFlag.Y) then 
+                            [zPeakFam;Some yPeakFam;]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                        else 
+                            [zPeakFam]
+                            |> List.fold (fun acc peakFam -> 
+                                    match peakFam with 
+                                    | Some peakF -> peakF :: acc
+                                    | None      ->  acc
+                                    ) []
+                    series [] waterLoss' aminoLoss' (peakFamilies@fragMasses) yPeakFam.MainPeak.Mass
+                | []          -> 
+                    fragMasses
+            let ySeries = (aal |> List.rev)
+            series ySeries false false [] (massfunction Formula.Table.H2O) 
+
+    module Series = 
+        /// 
+        let abcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal
+
+        ///
+        let abOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B) aal
+
+        ///
+        let acOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.C) aal
+
+        ///
+        let bcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal
+
+        ///
+        let aOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A) aal
+
+        ///
+        let bOfBioList(massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B) aal
+
+        ///
+        let cSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.C) aal
+
+        ///
+        let xyzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
+
+        ///
+        let xySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y) aal
+
+        ///
+        let xzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Z) aal
+
+        ///
+        let yzSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
+
+        ///
+        let xSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X) aal
+
+        ///
+        let ySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y) aal
+
+        ///
+        let zSeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
+
+        ///
+        let bySeriesInSilicoFragmentation (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
+
+ 
+ 
+ 
+ //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
     //        let currentCO = massDiffAX_CO label 
     //        rawMass |> List.map (fun n ->  n - currentCO)
-        
-
-    
-//        let isAminoLoss (a:AminoAcids.AminoAcid) =
-//            aminoLossSet.Contains(a)
-//            
-//        
-//
-//        let isWaterLoss (a:AminoAcids.AminoAcid) =
-//            waterLossSet.Contains(a)
-            
 
 
+    //TODO: Integrate in fragmentation method 
+    //let lossNeutral = 
+    //    if BioFSharp.Mz.Fragmentation.isNeutralLoss f then 
+    //        match f with 
+    //        | AminoAcids.Mod(aa, modiL) ->  
+    //        //TODO: Implement neutral loss logic    
+    //            None
+    //        //    let mass = (acc + currentMass - (massfunction (AminoAcids.isotopicLabelFunc f (modiL.Head.Modify Formula.emptyFormula)) ) )
+    //        //    Some (createTag (true,(NeutralLoss ionSeries)) mass)
+    //        | _ -> None
+    //    else None

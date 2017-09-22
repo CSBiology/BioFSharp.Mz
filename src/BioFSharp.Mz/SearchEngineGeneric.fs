@@ -79,18 +79,18 @@ module SearchEngineGeneric =
                 missingSpectra   
                
             
-        /// 
-        let generateTheoSpectra (massfunction:Formula.Formula -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,(LookUpResult<AminoAcids.AminoAcid> list)>) 
-                (andromedaCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) (sequestCache: Cache.Cache<int64,TheoreticalSpectrum<'b> list>)  chargeState scanlimits
-                    (maxMemory:int64)  lowerMass upperMass = 
-            ///
-            let memoryUsage = System.GC.GetTotalMemory(false)
-            if memoryUsage > maxMemory then
-                lookUpCache.Clear()
-                andromedaCache.Clear()
-                sequestCache.Clear()
-            ///
-            let lookUpResults = SearchDB.getPeptideLookUpWithMemBy lookUpF lookUpCache lowerMass upperMass
-            let andromedaResults = getTheoSpecsWithMem massfunction AndromedaLike.predictOf andromedaCache scanlimits chargeState lookUpResults
-            let sequestResults   = getTheoSpecsWithMem massfunction SequestLike.peptideToNormalizedIntensityArray sequestCache scanlimits chargeState lookUpResults
-            andromedaResults,sequestResults
+        ///// 
+        //let generateTheoSpectra (massfunction:Formula.Formula -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,(LookUpResult<AminoAcids.AminoAcid> list)>) 
+        //        (andromedaCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) (sequestCache: Cache.Cache<int64,TheoreticalSpectrum<'b> list>)  chargeState scanlimits
+        //            (maxMemory:int64)  lowerMass upperMass = 
+        //    ///
+        //    let memoryUsage = System.GC.GetTotalMemory(false)
+        //    if memoryUsage > maxMemory then
+        //        lookUpCache.Clear()
+        //        andromedaCache.Clear()
+        //        sequestCache.Clear()
+        //    ///
+        //    let lookUpResults = SearchDB.getPeptideLookUpWithMemBy lookUpF lookUpCache lowerMass upperMass
+        //    let andromedaResults = getTheoSpecsWithMem massfunction AndromedaLike.predictOf andromedaCache scanlimits chargeState lookUpResults
+        //    let sequestResults   = getTheoSpecsWithMem massfunction SequestLike.peptideToNormalizedIntensityArray sequestCache scanlimits chargeState lookUpResults
+        //    andromedaResults,sequestResults
