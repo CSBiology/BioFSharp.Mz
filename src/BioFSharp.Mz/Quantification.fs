@@ -455,6 +455,11 @@ module Quantification =
             FitBothModels = fitBothModels;EstimatedParameters=estimatedParams; SelectedModel = selectedModel ;Area = area ; StandardErrorOfPrediction = standardErrorOfPrediction;
                 DeltaScanTimePeakApex =deltaScanTimePeakApex; PeakApexIntensity=peakApexIntensity}
 
+
+        ///
+        let integralOfGaussian (coeffs:MathNet.Numerics.LinearAlgebra.Double.DenseVector) =
+            sqrt(2.) * coeffs.[0] * coeffs.[2] * sqrt(Math.PI)
+
         ///
         let createEMGSolverOption = Fitting.createSolverOption 0.001 0.001 10000
     
@@ -510,7 +515,7 @@ module Quantification =
    
         /// 
         let quantify (peakByF:Tag<Care.Extrema,(float*float)> [] -> Care.Extrema -> 'a -> ((int * Tag<Care.Extrema,(float*float)>) option)) windowSizeSGfilter negYThreshold posYThreshold (scanTime: float) (xData :float []) (yData: float [])= 
-            if xData.Length < 6 || yData.Length < 6 then None, 0
+            if xData.Length < 6 || yData.Length < 6 then None
             else
             // Step 0: zip xData and yData
             let xAndYData = 
@@ -537,7 +542,7 @@ module Quantification =
             // Step 3: find closest Peak to MS2 scantime
             let closestPeakIdx = 
                 peakByF labeledSndDevData SignalDetection.Care.Extrema.Positive scanTime
-            if closestPeakIdx.IsNone then None, 1
+            if closestPeakIdx.IsNone then None
             else
             // Step 4I: find leftLiftOffIdx
             let closestLeftLiftOffIdx =
@@ -560,7 +565,7 @@ module Quantification =
             //        the selected peak
             let gausParamEstCaruana = 
                 GaussEstimation.caruanaAlgorithm xDataForFit yDataForFit
-            if gausParamEstCaruana.IsNone then None,2
+            if gausParamEstCaruana.IsNone then None
             else 
             let gausParamEstCaruana = gausParamEstCaruana.Value
             //Step 9: Case A: if FitBithModels = True, the peak ending can be used to estimate a possible tailing    if FitBothModels = False then the first peak of a convoluted peak pair was chosen and is subsequently used to estimate the area
@@ -662,16 +667,32 @@ module Quantification =
                 // compute area beneath curve
                 match modelFunction with
                 | None -> 
-                    None, 3         
-                | Some (modelF,(paramV, yData), sEoE) ->
+                    None       
+                | Some (modelF,(paramV, yData), sEoE) when paramV.Count = 3 ->
                     try 
                         let area = 
-                            MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1])
+                            //MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1])
+                            integralOfGaussian paramV
                         let deltaScanTimePeakApex = (scanTime - gausParamEstCaruana.MeanX)
                         //
-                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX)), 10
+                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
-                    | _ as ex ->    None, 4
+                    | _ as ex ->    None
+                | Some (modelF,(paramV, yData), sEoE) when paramV.Count = 4 ->
+                    try 
+                        let f = modelF.GetFunctionValue paramV
+                        let integrationXData =
+                            [|xData.[0] .. 0.02 .. xData.[xData.Length-1]|]
+                        let integrationYData = 
+                            integrationXData |> Array.map f
+                        let area = 
+                            Integration.trapezEstAreaOf integrationXData integrationYData
+                            //MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1])
+                        let deltaScanTimePeakApex = (scanTime - gausParamEstCaruana.MeanX)
+                        //
+                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
+                    with 
+                    | _ as ex ->    None
             // Case B:
             else
                 let modelFunction = 
@@ -704,17 +725,18 @@ module Quantification =
                 // compute area beneath curve
                 match modelFunction with
                 | None -> 
-                    None, 5            
+                    None      
                 | Some (modelF,(paramV, yData), sEoE) ->
                     try                              
                         //
                         let area = 
-                            MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1]) 
+                            //MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1]) 
+                            integralOfGaussian paramV
                         //
-                        let deltaScanTimePeakApex = abs (scanTime - gausParamEstCaruana.MeanX)
-                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX)), 11
+                        let deltaScanTimePeakApex = scanTime - gausParamEstCaruana.MeanX
+                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
                     | _ as ex -> 
-                        None, 6
+                        None
 
                     

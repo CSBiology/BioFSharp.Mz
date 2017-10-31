@@ -953,9 +953,9 @@ module SearchDB =
                 )
 
             /// Prepares statement to select a ModSequence entry by Massrange (Between selected Mass -/+ the selected toleranceWidth)
-            let prepareSelectModsequenceByMassRange (cn:SQLiteConnection) =
+            let prepareSelectModsequenceByMassRange (cn:SQLiteConnection) tr =
                 let querystring = "SELECT * FROM ModSequence WHERE RoundedMass BETWEEN @mass1 AND @mass2"
-                let cmd = new SQLiteCommand(querystring, cn) 
+                let cmd = new SQLiteCommand(querystring, cn, tr) 
                 cmd.Parameters.Add("@mass1", Data.DbType.Int64) |> ignore
                 cmd.Parameters.Add("@mass2", Data.DbType.Int64) |> ignore
                 let rec readerloop (reader:SQLiteDataReader) (acc:(int*int*float*int64*string*int) list) =
@@ -1389,8 +1389,9 @@ module SearchDB =
         let connectionString = sprintf "Data Source=%s;Version=3" dbFileName
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
+        let tr = cn.BeginTransaction()
         let xModLookUp = Db.xModToSearchMod cn sdbParams
-        let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRange cn 
+        let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRange cn tr
         (fun lowerMass upperMass  -> 
                 let lowerMass' = Convert.ToInt64(lowerMass*1000000.)
                 let upperMass' = Convert.ToInt64(upperMass*1000000.)
@@ -1452,14 +1453,13 @@ module SearchDB =
                 
                 getPeptideLookUpFromFileBy sdbParams
 
-
     ///    
-    let getPeptideLookUpWithMemBy (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,(LookUpResult<AminoAcids.AminoAcid> list)>) lowerMass upperMass = 
+    let getPeptideLookUpWithMemBy calcIonSeries massFunction (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) lowerMass upperMass = 
         let lowerMassAsInt = Convert.ToInt64(lowerMass * 1000000.)
         let upperMassAsInt = Convert.ToInt64(upperMass * 1000000.)
         match Cache.containsItemsBetween lookUpCache (lowerMassAsInt,upperMassAsInt) with
         // The cache contains items that lie within the search range
-        | true, (lowerMassIdx,upperMassIdx)  -> 
+        | Some (lowerMassIdx,upperMassIdx)  -> 
             let lowermassAsInt' = lookUpCache.Keys.[upperMassIdx]
             if lowermassAsInt' < upperMassAsInt then
                 let reducedLookUp = lookUpF (Convert.ToDouble(lowermassAsInt') / 1000000.) upperMass
@@ -1467,14 +1467,19 @@ module SearchDB =
                 | h::tail -> 
                     let updateCache =
                         reducedLookUp
-                        |> List.groupBy (fun x -> Convert.ToInt64(x.Mass * 1000000.))
-                        |> List.map (fun x -> Cache.addItem lookUpCache x)
+                        |> List.map (fun lookUpResult -> 
+                                        let ionSeries = calcIonSeries massFunction lookUpResult.BioSequence
+                                        lookUpResult,ionSeries
+                                    )                                       
+                        |> List.groupBy (fun (lookUpResult,calcIonSeries) -> Convert.ToInt64(lookUpResult.Mass * 1000000.))
+                        |> List.map (Cache.addItem lookUpCache)
                     let lookUpResults = 
-                        let (bool, (lowerMassIdx',upperMassIdx')) = 
-                            Cache.containsItemsBetween lookUpCache (lowerMassAsInt,upperMassAsInt)
-                        Cache.getValuesByIdx lookUpCache (lowerMassIdx',upperMassIdx')
-                        |> List.concat
-
+                        match Cache.containsItemsBetween lookUpCache (lowerMassAsInt,upperMassAsInt) with 
+                        | Some (lowerMassIdx',upperMassIdx') ->
+                            Cache.getValuesByIdx lookUpCache (lowerMassIdx',upperMassIdx')
+                            |> List.concat
+                        | None -> 
+                            []   
                     lookUpResults
                 | []     ->
                     let lookUpResults = 
@@ -1486,19 +1491,21 @@ module SearchDB =
                     Cache.getValuesByIdx lookUpCache (lowerMassIdx, upperMassIdx)
                     |> List.concat
                 lookUpResults
-           
         // The cache contains no items of this mass that lie within the search range.
-        | false, (lowerMassIdx,upperMassIdx) ->
-            
-            let lookUpResults = lookUpF lowerMass upperMass
-            let updateCache =
-                        lookUpResults
-                        |> List.groupBy (fun x -> Convert.ToInt64(x.Mass * 1000000.))
-                        |> List.map (fun x -> Cache.addItem lookUpCache x)
+        | None ->         
+            let lookUpResults = 
+                lookUpF lowerMass upperMass
+                |> List.map (fun lookUpResult -> 
+                                let ionSeries = calcIonSeries massFunction lookUpResult.BioSequence
+                                lookUpResult,ionSeries
+                            )   
+            /// update the cache
+            lookUpResults
+            |> List.groupBy (fun (lookUpResult,calcIonSeries) -> Convert.ToInt64(lookUpResult.Mass * 1000000.))
+            |> List.map (Cache.addItem lookUpCache)
+            |> ignore 
             lookUpResults
                     
-            
-
     /// Returns SearchDbParams of a existing database by filePath
     let getSDBParamsBy filePath = 
         let connectionString = sprintf "Data Source=%s;Version=3" filePath

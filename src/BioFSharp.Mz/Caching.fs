@@ -40,7 +40,7 @@ module Cache =
             let rec loop lower upper = 
                 if lower >= upper then ~~~ lower 
                 else
-                    let middle = lower + (upper - lower) / 2
+                    let middle = lower + ((upper - lower) / 2)
                     let comparisonResult = comparer.Compare(value, keys.[middle])
                     if (comparisonResult) = 0 then
                         middle
@@ -128,11 +128,11 @@ module Cache =
             yield (cache.Values.[i])
         ]
                               
-    ///
+    /// Returns the indices of the items in the sorted cache including items at the border of the input range. 
     let containsItemsBetween (cache: Cache<'a,'b>) range = 
         let lower,upper = range
         let keys = cache.Keys
-        if keys.Count = 0 then (false, (0,0))
+        if keys.Count = 0 then None 
         else
         let lowerIdx = 
             let idx = binarySearch Border.Upper cache lower
@@ -141,8 +141,8 @@ module Cache =
             let idx = binarySearch Border.Upper cache upper
             if keys.[idx] > upper then idx - 1 else idx
         match lowerIdx < upperIdx && lowerIdx <> upperIdx with
-        | true  -> true , (lowerIdx,upperIdx)
-        | false -> false, (lowerIdx,upperIdx)   
+        | true  -> Some (lowerIdx,upperIdx)
+        | false -> None    
 
 
          

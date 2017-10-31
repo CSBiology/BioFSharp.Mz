@@ -51,7 +51,7 @@ module Peaks =
  
     ///
     let createPeak mzData intensityData = 
-        let pk = new Peak(mzData, intensityData)
+        let pk = Peak(mzData, intensityData)
         pk
     
     ///
@@ -80,17 +80,17 @@ module TaggedMass =
             
     ///
     let createTaggedMass iontype mass = 
-        let tM = new TaggedMass(iontype,mass)
+        let tM = TaggedMass(iontype,mass)
         tM   
     
     ///
     let createTaggedH2OLoss iontype mass =
-        let tM = new TaggedMass(iontype+Ions.IonTypeFlag.lossH2O,mass)
+        let tM = TaggedMass(iontype+Ions.IonTypeFlag.lossH2O,mass)
         tM   
 
     ///
     let createTaggedNH3Loss iontype mass =
-        let tM = new TaggedMass(iontype+Ions.IonTypeFlag.lossNH3,mass)
+        let tM = TaggedMass(iontype+Ions.IonTypeFlag.lossNH3,mass)
         tM   
 
     
@@ -107,7 +107,7 @@ module TaggedPeak =
             
     ///
     let createTaggedPeak iontype mzData intensityData = 
-        let tPk = new TaggedPeak(iontype,mzData, intensityData)
+        let tPk = TaggedPeak(iontype,mzData,intensityData)
         tPk    
     
     /// 

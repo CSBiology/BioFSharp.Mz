@@ -11,16 +11,17 @@ source https://nuget.org/api/v2
 nuget FSharp.Core ~> 4.0.0.1 redirects: force
 nuget MathNet.Numerics
 nuget MathNet.Numerics.FSharp
-nuget Newtonsoft.Json
+nuget Newtonsoft.Json ~> 8.0.3
 nuget System.Data.SQLite
+
 
 group Build
   source https://nuget.org/api/v2
-  
   nuget FAKE
   nuget FSharp.Formatting
-
   github fsharp/FAKE modules/Octokit/Octokit.fsx
+  nuget FSharp.Plotly
+
 
 group Test
   source https://nuget.org/api/v2

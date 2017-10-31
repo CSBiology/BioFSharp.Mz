@@ -22,6 +22,18 @@ module Fragmentation =
     //    match a with 
     //    | AminoAcids.Mod (aa,_) -> false
     //    | _                     -> false
+    
+    
+    type FragmentMasses = {
+        TargetMasses : PeakFamily<TaggedMass.TaggedMass> list
+        DecoyMasses  : PeakFamily<TaggedMass.TaggedMass> list
+        }
+        
+    let createFragmentMasses targetMasses decoyMasses= {
+        TargetMasses = targetMasses 
+        DecoyMasses  = decoyMasses
+        }
+    
     [<AutoOpenAttribute>]
     module private BioList =
 
@@ -237,13 +249,20 @@ module Fragmentation =
             series ySeries false false [] (massfunction Formula.Table.H2O) 
 
     module Series = 
+                    
+        //type NTerminalSeries = (Formula.Formula -> float) -> AminoAcids.AminoAcid list -> PeakFamily<TaggedMass.TaggedMass> list
+        //type CTerminalSeries = (Formula.Formula -> float) -> AminoAcids.AminoAcid list -> PeakFamily<TaggedMass.TaggedMass> list 
+        ///// 
+        //let abcOfBioList :NTerminalSeries = 
+        //    fun massfunction aal -> BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
+        
         /// 
         let abcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
-            BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal
+            BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
 
         ///
-        let abOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
-            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B) aal
+        let abOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =  
+            (abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B) aal)
 
         ///
         let acOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
@@ -293,7 +312,16 @@ module Fragmentation =
         let zOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
 
- 
+        let inline fragmentMasses (nTerminalSeries) (cTerminalSeries) (massFunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+            let targetMasses = 
+                let nTerm = nTerminalSeries massFunction aal
+                let cTerm = cTerminalSeries massFunction aal
+                nTerm@cTerm
+            let decoyMasses = 
+                let nTerm = nTerminalSeries massFunction (aal |> List.rev)
+                let cTerm = cTerminalSeries massFunction (aal |> List.rev)
+                nTerm@cTerm
+            createFragmentMasses targetMasses decoyMasses        
  
  //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
     //        let currentCO = massDiffAX_CO label 

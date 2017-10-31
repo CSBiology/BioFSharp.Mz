@@ -50,7 +50,7 @@ module PeakArray =
         let minMassBoarder = int minMassBoarder
         let maxMassBoarder = int maxMassBoarder
         let maxIndex = maxMassBoarder - minMassBoarder + 1        
-        let vector = LinearAlgebra.DenseVector.create (maxIndex-1) 0.
+        let vector = LinearAlgebra.SparseVector.create (maxIndex-1) 0.
         pkarr 
         |> Array.iter (fun p ->  
             let index = int(round p.Mz) - minMassBoarder

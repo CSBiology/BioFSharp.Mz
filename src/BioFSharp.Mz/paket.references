@@ -1,1 +1,5 @@
 FSharp.Core
+MathNet.Numerics
+MathNet.Numerics.FSharp
+Newtonsoft.Json 
+System.Data.SQLite

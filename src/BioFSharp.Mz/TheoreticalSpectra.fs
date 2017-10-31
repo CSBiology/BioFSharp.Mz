@@ -20,20 +20,18 @@ module TheoreticalSpectra =
         } 
 
     ///
-    let getTheoSpec (predictTheoSpec: (Formula.Formula -> float) -> float*float -> float -> AminoAcids.AminoAcid list -> 'a) (massfunction:Formula.Formula -> float) scanlimits chargeState (lookUpResult:LookUpResult<AminoAcids.AminoAcid>) =
-        let sequence = lookUpResult.BioSequence
+    let getTheoSpec (predictTheoSpec: float*float -> float -> PeakFamily<TaggedMass.TaggedMass> list -> 'a) scanlimits chargeState ((lookUpResult,ionSeries):LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) =
         let theoSpec = 
-            predictTheoSpec massfunction scanlimits (float chargeState) sequence
-        let decoySeq = sequence |> List.rev
+            predictTheoSpec scanlimits (float chargeState) ionSeries.TargetMasses
         let theoSpecDecoy = 
-            predictTheoSpec massfunction scanlimits (float chargeState) decoySeq
+            predictTheoSpec scanlimits (float chargeState) ionSeries.DecoyMasses
         createTheoreticalSpectrum lookUpResult theoSpec theoSpecDecoy
                          
     ///
-    let getTheoSpecs (predictTheoSpec: (Formula.Formula -> float) -> float*float -> float -> AminoAcids.AminoAcid list -> 'a) (massfunction:Formula.Formula -> float) scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) =
+    let getTheoSpecs (predictTheoSpec: float*float -> float -> PeakFamily<TaggedMass.TaggedMass> list -> 'a) scanlimits chargeState (possiblePeptideInfos:(LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list) =
         possiblePeptideInfos 
         |> List.fold (fun acc lookUpResult -> 
-                        getTheoSpec predictTheoSpec massfunction scanlimits chargeState lookUpResult :: acc
+                        getTheoSpec predictTheoSpec scanlimits chargeState lookUpResult :: acc
                     ) []
 
     
