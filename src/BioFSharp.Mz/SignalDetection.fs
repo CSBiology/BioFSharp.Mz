@@ -496,10 +496,13 @@ module SignalDetection =
                         calcCorrelationAtPosX j 
                 for j = 1 to mzData.Length-2 do
                    calcCorrAt j
-            [for i in [0.. nScales-1] -> 
-                async {return calcCorrAtScale i }]
-            |> Async.Parallel
-            |> Async.RunSynchronously
+
+            [0.. nScales-1]
+            |> PSeq.iter calcCorrAtScale
+            //[for i in [0.. nScales-1] -> 
+            //    async {return calcCorrAtScale i }]
+            //|> Async.Parallel
+            //|> Async.RunSynchronously
 
         ///
         let getSNRFilteredPeakLines noise_perc minSnr mzTol nScales mzData (allLines:Collections.Generic.List<RidgeLine>) (corrMatrix: float[,]) =                                           

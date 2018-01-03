@@ -298,32 +298,49 @@ module AndromedaLike =
                         else 
                             createMatchingScore (rawScore2 + massCorr + modCorr + cleavageCorr - 100.) nWi kWi q 
                     )
-        |> Array.max 
+        |> Array.maxBy (fun x -> x.Score) 
 
     ///
-    let calcDeltaAndorScore (sourceList:SearchEngineResult<MatchingScore> list) =
+    let calcNormDeltaBestToRest (sourceList:SearchEngineResult<MatchingScore> list) =
         match sourceList with
         | h1::rest -> 
             sourceList
             |> List.map
                 (fun sls ->
                     let deltaAndroScore = (h1.Score.Score - sls.Score.Score) / h1.Score.Score
-                    { sls with DeltaCN = deltaAndroScore } )      
+                    { sls with NormDeltaBestToRest = deltaAndroScore } )      
         | []       -> []
     
     ///
-    let calcDeltaAndorScoreBy (sourceList:SearchEngineResult<float> list) =
+    let calcNormDeltaBestToRestBy (sourceList:SearchEngineResult<float> list) =
         match sourceList with
         | h1::rest -> 
             sourceList
             |> List.map
                 (fun sls ->
                     let deltaAndroScore = (h1.Score - sls.Score) / h1.Score
-                    { sls with DeltaCN = deltaAndroScore } )      
+                    { sls with NormDeltaBestToRest = deltaAndroScore } )      
         | []       -> []
     
     ///
-    let calcAndromedaLikeScoresRevDecoy calcIonSeries (massfunction:Formula.Formula -> float) qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) chargeState isolationWindowTargetMz (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) spectrumID =
+    let calcNormDeltaNext (sourceList:SearchEngineResult<'a> list) =        
+        let rec loop normF acc l = 
+            match l with 
+            | hLast::[] ->
+                {hLast with NormDeltaNext = 0.}::acc
+                |> List.rev 
+            | hi::hii -> 
+                let normDeltaNext = (hi.Score - hii.[0].Score) / normF 
+                loop normF ({hi with NormDeltaNext = normDeltaNext}::acc) hii 
+        match sourceList with
+        | h1::rest -> 
+            let normFactor = h1.Score
+            loop normFactor [] sourceList
+                  
+        | []       -> []
+
+    ///
+    let calcAndromedaLikeScoresRevDecoy calcIonSeries (massfunction:Formula.Formula -> float) qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) spectrumID =
         let fCharge = float chargeState
         //
         let ratedSpec = 
@@ -344,24 +361,25 @@ module AndromedaLike =
                                     predictOf scanlimits fCharge ionSeries
                                 // Calculates score for real sequence
                                 let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec ratedSpec
-                                let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore nan
+                                let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
 
                                 // Calculates score for reversed decoy sequence
                                 let sequence_decoy = sequence |> List.rev
                                 let ionSeries_decoy = calcIonSeries massfunction sequence_decoy
                                 let theoSpecDecoy = predictOf scanlimits fCharge ionSeries_decoy
                                 let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpecDecoy ratedSpec
-                                let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore nan 
+                                let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc                        
                          ) []
-        calcDeltaAndorScore (ides  |> List.sortBy (fun sls -> - sls.Score.Score))  
+        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))  
+        |> calcNormDeltaNext
 
     ///
     let getTheoSpecs scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*FragmentMasses>) =
         TheoreticalSpectra.getTheoSpecs predictOf scanlimits chargeState possiblePeptideInfos
  
     ///
-    let calcAndromedaScore qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<PeakFamily<TaggedPeak.TaggedPeak>[]>> ) spectrumID =
+    let calcAndromedaScore qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<PeakFamily<TaggedPeak.TaggedPeak>[]>> ) spectrumID =
         
         let fCharge = float chargeState
         //
@@ -380,18 +398,19 @@ module AndromedaLike =
                                 // Calculates score for target sequence
                                 let theoSpec = theoreticalSpectrum.TheoSpec
                                 let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec binnedRecSpec
-                                let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan
+                                let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
                                 
                                 let theoSpec_Decoy = theoreticalSpectrum.DecoyTheoSpec
                                 let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec_Decoy binnedRecSpec
-                                let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan
+                                let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc     
                      ) []
-        calcDeltaAndorScoreBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
-   
+        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
+        |> calcNormDeltaNext
+
    
     ///
-    let calcAndromedaScoreParallel qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<PeakFamily<TaggedPeak.TaggedPeak>[]>> ) spectrumID =
+    let calcAndromedaScoreParallel qMinAndMax scanlimits matchingTolPPM (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<PeakFamily<TaggedPeak.TaggedPeak>[]>> ) spectrumID =
         
         let fCharge = float chargeState
         //
@@ -408,11 +427,11 @@ module AndromedaLike =
             // Calculates score for target sequence
             let theoSpec = theoreticalSpectrum.TheoSpec
             let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec binnedRecSpec
-            let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan
+            let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
             
             let theoSpec_Decoy = theoreticalSpectrum.DecoyTheoSpec
             let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec_Decoy binnedRecSpec
-            let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan
+            let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
             [targetResult;decoyResult]
         
         let ides = 
@@ -420,5 +439,6 @@ module AndromedaLike =
             |> Async.Parallel
             |> Async.RunSynchronously
             |> List.concat    
-        calcDeltaAndorScoreBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
-    
+        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
+        |> calcNormDeltaNext
+

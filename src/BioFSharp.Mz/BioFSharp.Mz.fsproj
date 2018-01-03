@@ -81,10 +81,11 @@
     <Compile Include="TheoreticalSpectra.fs" />
     <Compile Include="SearchEngineResult.fs" />
     <Compile Include="SequestLike.fs" />
-    <Compile Include="Quantification.fs" />
     <Compile Include="AndromedaLike.fs" />
     <Compile Include="AndromedaLike_old.fs" />
     <Compile Include="SearchEngineGeneric.fs" />
+    <Compile Include="Quantification.fs" />
+    <Compile Include="PercolatorWrapper.fs" />
     <Compile Include="WorkflowLanguage.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />

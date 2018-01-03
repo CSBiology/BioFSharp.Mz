@@ -188,23 +188,20 @@ module SearchDB =
         ProteinId=proteinId;DisplayID=displayID;Sequence=sequence;Container=container }
 
     type LookUpResult<'a when 'a :> IBioItem> = {
-        ModSequenceID    : int
-        PepSequenceID    : int        
-        Mass             : float 
-        RoundedMass      : int64
-        StringSequence   : string
-        BioSequence      : 'a list
-        GlobalMod        : int                
+        ModSequenceID       : int
+        PepSequenceID       : int        
+        Mass                : float 
+        RoundedMass         : int64
+        RevStringSequence   : string
+        BioSequence         : 'a list
+        GlobalMod           : int                
     }
 
-    let createLookUpResult modSequenceId pepSequenceId mass roundedMass stringSequence bioSequence globalMod =
-        {ModSequenceID=modSequenceId ;PepSequenceID = pepSequenceId; Mass = mass;RoundedMass = roundedMass; StringSequence=stringSequence; BioSequence=bioSequence; GlobalMod=globalMod }
+    let createLookUpResult modSequenceId pepSequenceId mass roundedMass revStringSequence bioSequence globalMod =
+        {ModSequenceID=modSequenceId ;PepSequenceID = pepSequenceId; Mass = mass;RoundedMass = roundedMass; RevStringSequence=revStringSequence; BioSequence=bioSequence; GlobalMod=globalMod }
     
 
     module Db =
-        
-        open System.Data.SQLite
-        open Either
 
         type SqlErrorCode =
             | DbDataBaseNotFound
@@ -253,8 +250,6 @@ module SearchDB =
         module  SQLiteQuery =
     
             open System.Data
-            open System.Data.SQLite
-            open Newtonsoft
             open Newtonsoft.Json
             //Create DB table statements
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,6 +304,7 @@ module SearchDB =
                         |> Either.fail
                 with            
                 | _ as ex -> 
+                    
                         PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
                         |> Either.fail
 
@@ -421,6 +417,20 @@ module SearchDB =
                         PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
                         |> Either.fail
 
+            //let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
+            //    let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
+            //    let cmd = new SQLiteCommand(querystring, cn)    
+            //    try
+            //        let exec = cmd.ExecuteNonQuery()
+            //        if  exec < 1 then
+            //            Either.succeed cn
+            //        else 
+            //            PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("INDEX SequenceIndex",exec)) 
+            //            |> Either.fail
+            //    with            
+            //    | _ as ex -> 
+            //            PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
+            //            |> Either.fail
 
             //Manipulate Pragma Statements
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1169,7 +1179,6 @@ module SearchDB =
 
         let isVarModified (a:AminoAcidWithFlag) =
             a.IsFlaged
-    
 
         let setVarModifiedFlagOf (a:AminoAcid)  =
             AminoAcidWithFlag(true,a)
@@ -1439,7 +1448,7 @@ module SearchDB =
                             |> Array.mapi (fun peptideId pep ->
                                                 let container = 
                                                     ModCombinator.combineToModString modLookUp sdbParams.VarModThreshold sdbParams.MassFunction pep.PepSequence
-                                                createPeptideContainer (proteinId*10000+peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
+                                                createPeptideContainer (proteinId*100000+peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
                                             )
                         
                         createProteinContainer 
@@ -1519,5 +1528,22 @@ module SearchDB =
                         (Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(fMods)) (Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(vMods)) vThr
         | Failure (_) ->
             failwith "This database does not contain any SearchParameters. It is not recommended to work with this file."
+
+    module Table =
+        
+        let phosphorylation'Ser'Thr'Tyr' =
+            createSearchModification "Phosphorylation'Ser'Thr'Tyr'" "21" "Addition of a phosphate group to the AA residue" "HO3P"
+                [Specific(Ser,ModLocation.Residual); Specific(Thr,ModLocation.Residual); Specific(Tyr,ModLocation.Residual)] SearchModType.Plus "ph"
     
-                    
+        let acetylation'ProtNTerm' =
+            createSearchModification "Acetyl(Protein N-Term)" "21" "Acetylation of the protein N-terminus" "C2H2O"
+                [Any(ModLocation.ProteinNterm)] SearchModType.Plus "ac"
+
+        let oxidation'Met' =
+            createSearchModification "Oxidation'Met'" "35" "Oxidation" "O"
+                [Specific(Met,ModLocation.Residual)] SearchModType.Plus "ox"
+
+        let carbamidomethyl'Cys' =
+            createSearchModification "Carbamidomethyl'Cys'" "21" "Iodoacetamide derivative" "C2H3NO"
+                [Specific(Cys,ModLocation.Residual)] SearchModType.Plus "ca"
+                                        
