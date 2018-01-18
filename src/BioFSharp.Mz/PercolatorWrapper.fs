@@ -5,10 +5,13 @@ module PercolatorWrapper =
     module Parameters = 
 
         // TODO: Refactor in FSharp.Care 
-        let private fileInfoToLinuxPath (fI:System.IO.FileInfo) =
+        let fileInfoToLinuxPath (fI:System.IO.FileInfo) =
             let directory = fI.Directory.Root.ToString().Substring(0,1).ToLower()
             "/mnt/" + directory + (fI.FullName.Substring(2).Replace('\\', '/'))
         
+        let fileInfoToWindowsPath (fI:System.IO.FileInfo) =
+            fI.FullName
+
         type GeneralOptions = 
             /// Display the help message
             | Help
@@ -44,11 +47,11 @@ module PercolatorWrapper =
             /// Skip validation of pin-xml input file against xml schema.
             | SkipSchemeValidation
         
-        let private stringOfFIO (fIO:FileInputOptions) =
+        let private stringOfFIO fileInfoToPath (fIO:FileInputOptions) =
             match fIO with 
-            | PINTAB                info -> fileInfoToLinuxPath info 
-            | PINXML                info -> fileInfoToLinuxPath info 
-            | DeprecatedPINXML      info -> "--xml-in " + fileInfoToLinuxPath info 
+            | PINTAB                info -> fileInfoToPath info 
+            | PINXML                info -> fileInfoToPath info 
+            | DeprecatedPINXML      info -> "--xml-in " + fileInfoToPath info 
             | SkipSchemeValidation ->       "--no-schema-validation "
     
         type FileOutputOptions =
@@ -71,17 +74,17 @@ module PercolatorWrapper =
             /// Include decoys (PSMs, peptides and/or proteins) in the xml-output. Only available if -X is set.
             | IncludeDecoysInXML 
 
-        let private stringOfFOO (fOO: FileOutputOptions) = 
+        let private stringOfFOO fileInfoToPath (fOO: FileOutputOptions) = 
             match fOO with 
-            | POUTTAB_Peptides info      -> "--results-peptides " + fileInfoToLinuxPath info 
-            | POUTTAB_DecoyPeptides info -> "--decoy-results-peptides " + fileInfoToLinuxPath info 
-            | POUTTAB_PSMs info          -> "--results-psms " + fileInfoToLinuxPath info 
-            | POUTTAB_DecoyPSMs info     -> "--decoy-results-psms " + fileInfoToLinuxPath info 
-            | POUTTAB_Proteins info      -> "--results-proteins " + fileInfoToLinuxPath info 
-            | POUTTAB_DecoyProteins info -> "--decoy-results-proteins " + fileInfoToLinuxPath info 
-            | POUTTAB_Features info      -> "--tab-out " + fileInfoToLinuxPath info 
-            | POUTXML info               -> "--xmloutput " + fileInfoToLinuxPath info 
-            | IncludeDecoysInXML        -> "--decoy-xml-output " 
+            | POUTTAB_Peptides info      -> "--results-peptides " + fileInfoToPath info 
+            | POUTTAB_DecoyPeptides info -> "--decoy-results-peptides " + fileInfoToPath info 
+            | POUTTAB_PSMs info          -> "--results-psms " + fileInfoToPath info 
+            | POUTTAB_DecoyPSMs info     -> "--decoy-results-psms " + fileInfoToPath info 
+            | POUTTAB_Proteins info      -> "--results-proteins " + fileInfoToPath info 
+            | POUTTAB_DecoyProteins info -> "--decoy-results-proteins " + fileInfoToPath info 
+            | POUTTAB_Features info      -> "--tab-out " + fileInfoToPath info 
+            | POUTXML info               -> "--xmloutput " + fileInfoToPath info 
+            | IncludeDecoysInXML         -> "--decoy-xml-output " 
         
         type SVMFeatureOptions =
             /// Output final SVM weights to given file. (one per line)
@@ -101,10 +104,10 @@ module PercolatorWrapper =
             /// Retention time features are calculated as in Klammer et al. instead of with Elude. Only available if -D is set.
             | Klammer
         
-        let private stringOfSVMFO (sVMFO: SVMFeatureOptions) = 
+        let private stringOfSVMFO fileInfoToPath (sVMFO: SVMFeatureOptions) = 
             match sVMFO with 
-            | OUT_SVMWeights info   -> "--weights " + fileInfoToLinuxPath info 
-            | IN_SVMWeights info    -> "--init-weights " + fileInfoToLinuxPath info 
+            | OUT_SVMWeights info   -> "--weights " + fileInfoToPath info 
+            | IN_SVMWeights info    -> "--init-weights " + fileInfoToPath info 
             // TODO
             // | FEATURENAME info          -> "--results-psms " + info.FullName
             | UnitNorm              -> "--unitnorm "
@@ -167,13 +170,13 @@ module PercolatorWrapper =
             /// Not available for Fido.
             | ReportProteinDuplicates
 
-        let private stringOfPI (pI:ProteinInferenceOptions_Percolator) =
+        let private stringOfPI fileInfoToPath (pI:ProteinInferenceOptions_Percolator) =
             match pI with 
-            | Fasta info                    -> "--picked-protein " + fileInfoToLinuxPath info 
-            | ProteinDecoyPattern pattern   -> "--subset-max-train " + pattern
-            | Protease protease             -> "--Cpos " + protease
-            | ReportProteinFragments        -> "--Cneg " 
-            | ReportProteinDuplicates       -> "--testFDR "         
+            | Fasta info                    -> "--picked-protein " + fileInfoToPath info 
+            | ProteinDecoyPattern pattern   -> " --protein-decoy-pattern " + pattern
+            | Protease protease             -> "--protein-enzyme " + protease
+            | ReportProteinFragments        -> "--protein-report-fragments " 
+            | ReportProteinDuplicates       -> "--protein-report-duplicates "         
 
         type ProteinInferenceOptions_FIDO = 
             /// Use the Fido algorithm to infer protein probabilities.
@@ -207,19 +210,19 @@ module PercolatorWrapper =
 
         let private stringOfPIF (pIF:ProteinInferenceOptions_FIDO) =
             match pIF with 
-            | UseFido                -> "--picked-protein "
-            | Alpha value            -> "--subset-max-train " + string value
-            | Beta value             -> "--subset-max-train " + string value
-            | Gamma value            -> "--subset-max-train " + string value
-            | EmpricialQValue        -> "--Cneg " 
-            | QValueThreshold value  -> "--testFDR " + string value 
+            | UseFido                -> "--fido-protein "
+            | Alpha value            -> "--fido-alpha " + string value
+            | Beta value             -> "--fido-beta " + string value
+            | Gamma value            -> "--fido-gamma " + string value
+            | EmpricialQValue        -> "--fido-empirical-protein-q " 
+            | QValueThreshold value  -> "--fido-gridsearch-mse-threshold " + string value 
 
         //let private stringOfSUF (sUF:SpeedUpOptions_FIDO) =
         //    match sUF with 
-            | GridSearchDepth value      -> "--subset-max-train " + string value
-            | GridSearchSpeed value      -> "--subset-max-train " + string value
-            | NoSubgraphSplitting        -> "--Cneg " 
-            | ProteinTruncationThreshold -> "--Cneg " 
+            | GridSearchDepth value      -> "--fido-gridsearch-depth " + string value
+            | GridSearchSpeed value      -> "--fido-fast-gridsearch " + string value
+            | NoSubgraphSplitting        -> "--fido-no-split-large-components " 
+            | ProteinTruncationThreshold -> "--fido-protein-truncation-threshold " 
             
 
         type PercolatorParams =
@@ -231,45 +234,77 @@ module PercolatorWrapper =
             | ProteinInferenceOptions_FIDO  of seq<ProteinInferenceOptions_FIDO>
             | ProteinInferenceOptions_Percolator of seq<ProteinInferenceOptions_Percolator>
     
-        let stringOf (p:PercolatorParams) = 
+        let stringOf fileInfoToPath (p:PercolatorParams) = 
             let iterCustom f s =
                 Seq.map f s
                 |> String.concat ""
             match p with
             | GeneralOptions                     s -> iterCustom stringOfgO s
-            | FileInputOptions                   s -> iterCustom stringOfFIO s
-            | FileOutputOptions                  s -> iterCustom stringOfFOO s
-            | SVMFeatureOptions                  s -> iterCustom stringOfSVMFO s
+            | FileInputOptions                   s -> iterCustom (stringOfFIO fileInfoToPath) s
+            | FileOutputOptions                  s -> iterCustom (stringOfFOO fileInfoToPath) s
+            | SVMFeatureOptions                  s -> iterCustom (stringOfSVMFO fileInfoToPath) s
             | SVMTrainingOptions                 s -> iterCustom stringOfSVMTO s
             | ProteinInferenceOptions_FIDO       s -> iterCustom stringOfPIF s  
-            | ProteinInferenceOptions_Percolator s -> iterCustom stringOfPI s 
+            | ProteinInferenceOptions_Percolator s -> iterCustom (stringOfPI fileInfoToPath) s 
 
-           // ProcessStartInfo
-           //  (FileName = "bash.exe", UseShellExecute = false, Arguments = "-c \"/usr/bio/targetp-1.1/targetp -h\"",
-           //  //(FileName = "bash.exe", UseShellExecute = false, Arguments = "-c gawk",
-           //   RedirectStandardError = false, CreateNoWindow = false,
-           //   RedirectStandardOutput = false, RedirectStandardInput = false)
-           //|> Process.Start
     open System 
     open System.Diagnostics
 
-    type PercolatorWrapper() = 
+    type OperatingSystem = 
+        | Windows
+        | Ubuntu 
+
+    type PercolatorWrapper(os:OperatingSystem,?exePath) = 
         let createArguments (f : 'a -> string) (ps:seq<'a>) =
             ps |> Seq.map f
             |> String.concat " "
-        let createProcess name (f : 'TParam -> string) (arg:string) =           
+
+        let createUnixShellProcess name (f : 'TParam -> string) (arg:string) =
+            let path = 
+                match exePath with 
+                | Some path -> path 
+                | None      -> """-c "/usr/bin/percolator """
             let beginTime = DateTime.UtcNow
             printfn "Starting %s..." name
             let p =                        
                 new ProcessStartInfo
-                 (FileName = "bash.exe", UseShellExecute = false, Arguments = """-c "/usr/bin/percolator """ + arg + "\"",
+                 (FileName = "bash.exe", UseShellExecute = false, Arguments = path + arg + "\"",
                   RedirectStandardError = false, CreateNoWindow = false,
                   RedirectStandardOutput = false, RedirectStandardInput = false)
                 |> Process.Start
             p.WaitForExit()
+            p.Close()
+            printfn "%s done." name
+            printfn "Elapsed time: %A" (beginTime.Subtract(DateTime.UtcNow))
+
+        let createWindowsProcess name (f : 'TParam -> string) (arg:string) =           
+            let exePath' = 
+                match exePath with 
+                | Some path -> path 
+                | None      -> """-c "/usr/bin/percolator """
+            let beginTime = DateTime.UtcNow
+            printfn "Starting %s..." name
+            let p =                        
+                new ProcessStartInfo
+                  (FileName = exePath', UseShellExecute = false, Arguments = arg, 
+                   RedirectStandardError = false, CreateNoWindow = true, 
+                   RedirectStandardOutput = false, RedirectStandardInput = true) 
+                |> Process.Start
+            p.WaitForExit()
+            p.Close()
             printfn "%s done." name
             printfn "Elapsed time: %A" (beginTime.Subtract(DateTime.UtcNow))
         
+            
+        
         member this.Percolate (ps:seq<Parameters.PercolatorParams>) =
-            let arg = createArguments Parameters.stringOf ps 
-            createProcess (sprintf "Percolator with %s" arg) Parameters.stringOf arg
+            match os with 
+            | Windows ->
+                let arg = createArguments (Parameters.stringOf Parameters.fileInfoToWindowsPath) ps 
+                createWindowsProcess (sprintf "Percolator with %s" arg) (Parameters.stringOf Parameters.fileInfoToWindowsPath) arg
+
+            | Ubuntu -> 
+                let arg = createArguments (Parameters.stringOf Parameters.fileInfoToLinuxPath) ps 
+                createUnixShellProcess (sprintf "Percolator with %s" arg) (Parameters.stringOf Parameters.fileInfoToLinuxPath) arg
+
+      

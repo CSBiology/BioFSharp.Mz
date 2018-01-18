@@ -401,7 +401,6 @@ module SearchDB =
                         PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
                         |> Either.fail
 
-
             let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
                 let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
                 let cmd = new SQLiteCommand(querystring, cn)    
@@ -417,6 +416,20 @@ module SearchDB =
                         PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
                         |> Either.fail
 
+            let setPepSequenceIDIndexOnCleavageIndex (cn:SQLiteConnection) = 
+                let querystring = "CREATE INDEX PepSequenceIDIndex ON CleavageIndex (PepSequenceID) "
+                let cmd = new SQLiteCommand(querystring, cn)    
+                try
+                    let exec = cmd.ExecuteNonQuery()
+                    if  exec < 1 then
+                        Either.succeed cn
+                    else 
+                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("INDEX SequenceIndex",exec)) 
+                        |> Either.fail
+                with            
+                | _ as ex -> 
+                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
+                        |> Either.fail
             //let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
             //    let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
             //    let cmd = new SQLiteCommand(querystring, cn)    
@@ -745,6 +758,7 @@ module SearchDB =
                 )
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
             /// Prepares statement to select a Protein entry by ID        
             let prepareSelectProteinByID (cn:SQLiteConnection) (tr) =
                 let querystring = "SELECT * FROM Protein WHERE ID=@id "
@@ -752,20 +766,12 @@ module SearchDB =
                 cmd.Parameters.Add("@id", Data.DbType.Int32) |> ignore       
                 (fun (id:int32)  ->         
                     cmd.Parameters.["@id"].Value <- id
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2)) |> Either.succeed
-                        | false -> PeptideLookUpError.DbProteinItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbProtein (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
-                )
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true  -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2)) 
+                    | false -> -1,"",""
+                )   
+                                    
             /// Prepares statement to select a Protein entry by Accession     
             let prepareSelectProteinByAccession (cn:SQLiteConnection) (tr) =
                 let querystring = "SELECT * FROM Protein WHERE Accession=@accession"
@@ -840,24 +846,15 @@ module SearchDB =
             let prepareSelectCleavageIndexByPepSequenceID  (cn:SQLiteConnection) (tr) =
                 let querystring = "SELECT * FROM CleavageIndex WHERE PepSequenceID=@pepSequenceID"
                 let cmd = new SQLiteCommand(querystring, cn, tr) 
-                cmd.Parameters.Add("@pepSequenceID", Data.DbType.Int32) |> ignore       
+                cmd.Parameters.Add("@pepSequenceID", Data.DbType.Int32) |> ignore
+                let rec readerloop (reader:SQLiteDataReader) (acc:(int*int*int*int*int*int) list) =
+                        match reader.Read() with 
+                        | true  -> readerloop reader ((reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5)) :: acc)
+                        | false ->  acc 
                 (fun (pepSequenceID:int32)  ->         
                     cmd.Parameters.["@pepSequenceID"].Value <- pepSequenceID
-        
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5)) 
-                                  |> Either.succeed
-                        | false -> PeptideLookUpError.DbCleavageIndexItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbCleavageIndex (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    readerloop reader [] 
                 )
 
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1139,7 +1136,7 @@ module SearchDB =
                     | _ -> printfn "Protein is already in the database" |>ignore
                 )
 
-
+            SQLiteQuery.setPepSequenceIDIndexOnCleavageIndex cn |> ignore 
             SQLiteQuery.setMassIndexOnModSequence cn |> ignore
             //Commit and dispose the transaction and close the SQLiteConnection
             tr.Commit()
@@ -1391,11 +1388,24 @@ module SearchDB =
             createLookUpResult modSID pepID realMass roundMass seqs bSeq gMod   
     
     
+     /// Returns a list of proteins retrieved by PepsequenceID
+    let getProteinLookUpFromFileBy sdbParams = 
+        let dbFilePath = Db.getNameOf sdbParams
+        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
+        let cn = new SQLiteConnection(connectionString)
+        cn.Open()
+        let tr = cn.BeginTransaction()
+        let selectCleavageIdxByPepSeqID   = Db.SQLiteQuery.prepareSelectCleavageIndexByPepSequenceID cn tr
+        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID' cn tr        
+        (fun pepSequenceID -> 
+                selectCleavageIdxByPepSeqID pepSequenceID
+                |> List.map (fun (_,protID,_,_,_,_) -> selectProteinByProtID protID )
+        )
 
      /// Returns a LookUpResult list
     let getPeptideLookUpFromFileBy sdbParams = 
-        let dbFileName = Db.getNameOf sdbParams
-        let connectionString = sprintf "Data Source=%s;Version=3" dbFileName
+        let dbFilePath = Db.getNameOf sdbParams
+        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
         let tr = cn.BeginTransaction()

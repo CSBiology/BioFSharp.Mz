@@ -284,7 +284,6 @@ module AndromedaLike =
         | 2 -> 17. 
         |_  -> 0.
 
-        
     let scoreTheoVsRecordedSpec (lowerScanLimit,upperScanLimit) (qMostAbundandPepsMin, qMostAbundandPepsMax)  matchingTolPPM  charge (lookUpResult:LookUpResult<'a>) theoSpec (ratedSpectrum: RatedPeak []) =     
         countMatches (lowerScanLimit,upperScanLimit) (qMostAbundandPepsMin, qMostAbundandPepsMax) matchingTolPPM theoSpec ratedSpectrum
         |> Array.map (fun (q,(nWo,nWi,kWo,kWi)) -> 
@@ -293,17 +292,29 @@ module AndromedaLike =
                         let cleavageCorr = cleavageCorrection 0 false
                         let rawScore1 = scoreFuncImpl (nWo) kWo q
                         let rawScore2 = scoreFuncImpl (nWi) kWi q 
+
                         if rawScore1 > rawScore2 then 
-                            createMatchingScore (rawScore1 + massCorr + modCorr + cleavageCorr - 100.) nWo kWo q
+                            let finalScore = 
+                                let tmp = (rawScore1 + massCorr + modCorr + cleavageCorr - 100.)
+                                if tmp < 0. then 0. else tmp 
+                            createMatchingScore finalScore nWo kWo q
                         else 
-                            createMatchingScore (rawScore2 + massCorr + modCorr + cleavageCorr - 100.) nWi kWi q 
+                            let finalScore = 
+                                let tmp = (rawScore2 + massCorr + modCorr + cleavageCorr - 100.)
+                                if tmp < 0. then 0. else tmp 
+                            createMatchingScore finalScore nWi kWi q 
                     )
         |> Array.maxBy (fun x -> x.Score) 
-
-    ///
+                            
+    /// Calculates sequest-like delta normalized by best score to the best score.
+    ///  (Xcorr(top hit) - Xcorr(n)) / Xcorr(top hit). Thus, the deltaCn for the top hit is
+    ///  (Xcorr(top hit) - Xcorr(top hit)) / Xcorr(top hit) = 0.
+    /// if the best Score equals 0. this function returns returns 1 for every PSM
     let calcNormDeltaBestToRest (sourceList:SearchEngineResult<MatchingScore> list) =
         match sourceList with
         | h1::rest -> 
+            if h1.Score.Score <= 0. then sourceList |> List.map (fun sls -> {sls with NormDeltaBestToRest = 1.})
+            else
             sourceList
             |> List.map
                 (fun sls ->
@@ -311,10 +322,15 @@ module AndromedaLike =
                     { sls with NormDeltaBestToRest = deltaAndroScore } )      
         | []       -> []
     
-    ///
+    /// Calculates sequest-like delta normalized by best score to the best score.
+    ///  (Xcorr(top hit) - Xcorr(n)) / Xcorr(top hit). Thus, the deltaCn for the top hit is
+    ///  (Xcorr(top hit) - Xcorr(top hit)) / Xcorr(top hit) = 0.
+    /// if the best Score equals 0. this function returns returns 1 for every PSM
     let calcNormDeltaBestToRestBy (sourceList:SearchEngineResult<float> list) =
         match sourceList with
-        | h1::rest -> 
+        | h1::rest ->
+            if h1.Score <= 0. then sourceList |> List.map (fun sls -> {sls with NormDeltaBestToRest = 1.})
+            else
             sourceList
             |> List.map
                 (fun sls ->
@@ -322,21 +338,25 @@ module AndromedaLike =
                     { sls with NormDeltaBestToRest = deltaAndroScore } )      
         | []       -> []
     
-    ///
+    // Iterates over the score ranked PSMs and computes the score difference between adjacent
+    // PSMs normalized by the Score of the best ranked PSM.
+    /// if the best Score equals 0., this function returns returns 0 for every PSM.
     let calcNormDeltaNext (sourceList:SearchEngineResult<'a> list) =        
         let rec loop normF acc l = 
             match l with 
             | hLast::[] ->
                 {hLast with NormDeltaNext = 0.}::acc
                 |> List.rev 
+                
             | hi::hii -> 
                 let normDeltaNext = (hi.Score - hii.[0].Score) / normF 
                 loop normF ({hi with NormDeltaNext = normDeltaNext}::acc) hii 
         match sourceList with
         | h1::rest -> 
             let normFactor = h1.Score
-            loop normFactor [] sourceList
-                  
+            if normFactor <= 0. then sourceList |> List.map (fun als -> {als with NormDeltaNext = 0.})
+            else
+            loop normFactor [] sourceList   
         | []       -> []
 
     ///

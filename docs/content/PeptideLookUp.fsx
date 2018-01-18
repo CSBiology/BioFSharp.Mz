@@ -53,6 +53,9 @@ open BioFSharp.Mz
 open ModificationInfo
 open AminoAcids
 open SearchDB
+
+let sdbParams = SearchDB.getSDBParamsBy @"C:\Users\david\Documents\BioInfo\58_Markus\data\20170824 GE MRms0573001.db"
+
 /// Returns a instance of the type SearchModification
 let phosphorylation = {
     // Name of this SearchModification 
