@@ -1396,7 +1396,7 @@ module SearchDB =
         cn.Open()
         let tr = cn.BeginTransaction()
         let selectCleavageIdxByPepSeqID   = Db.SQLiteQuery.prepareSelectCleavageIndexByPepSequenceID cn tr
-        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID' cn tr        
+        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID cn tr        
         (fun pepSequenceID -> 
                 selectCleavageIdxByPepSeqID pepSequenceID
                 |> List.map (fun (_,protID,_,_,_,_) -> selectProteinByProtID protID )

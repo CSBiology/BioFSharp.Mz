@@ -74,6 +74,10 @@ module Quantification =
         /// Warning: This method is sensitive to noisy data. If the noise level of the input parameters is high, smoothing of 
         /// the data is strongly recommended. 
         let caruanaAlgorithm (mzData:float []) (intensityData:float []) =
+            let mzData,intensityData = 
+                Array.zip mzData intensityData
+                |> Array.filter (fun (_,intensity) -> intensity <> 0.)
+                |> Array.unzip
             if mzData.Length < 3 || intensityData.Length < 3 then None 
             else 
             let logTransIntensityData = 
@@ -467,7 +471,7 @@ module Quantification =
         let createGaussSolverOption = Fitting.createSolverOption 0.0001 0.0001 10000
 
         ///
-        let private findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
+        let  findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
             let rec loopF (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (currentIdx: int) (kLiftOffs: int) (hasRightPeak:bool) = 
                 if currentIdx = labeledSndDevData.Length-1 then 
                     currentIdx, kLiftOffs, hasRightPeak
@@ -485,7 +489,7 @@ module Quantification =
                     // only one Liftoff and no flanking peak indicates a isolated peak and both models can be tested. 
                 if kLiftOffs = 1 && hasRightPeak = false then
                     FitBothModels.True, 
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x >= snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x            
                 // only one Liftoff indicates a convoluted peak, use only Gaussian model            
@@ -497,7 +501,7 @@ module Quantification =
                 // if more than one Liftoff between two peaks is detected, the peaks are well separated and both Models can be tested
                 elif kLiftOffs > 1 then 
                     FitBothModels.True,  
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x        
                 else
@@ -511,7 +515,6 @@ module Quantification =
                     | None   -> xAndYData.Length-1 
                     | Some x -> x
             
- 
    
         /// 
         let quantify (peakByF:Tag<Care.Extrema,(float*float)> [] -> Care.Extrema -> 'a -> ((int * Tag<Care.Extrema,(float*float)>) option)) windowSizeSGfilter negYThreshold posYThreshold (scanTime: float) (xData :float []) (yData: float [])= 
@@ -582,6 +585,18 @@ module Quantification =
                         tmpGauss
          
                     ///
+                    let gaussPrediction =
+                        let paramConti = new ResizeArray<DenseVector>()
+                        let gaussSolOptions = createGaussSolverOption gausParamA
+                        try
+                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
+                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
+                            Some (gaussParamA, gaussYPredicted)
+                        with 
+                        | _ as ex  -> 
+                            None
+ 
+                    ///
                     let exponentialDecayEst = 
                         let startTime = xData.[closestRightLiftOffIdx.Value]
                         let startIntensity = yData.[closestRightLiftOffIdx.Value]
@@ -602,18 +617,7 @@ module Quantification =
                         tmpEmg.[2] <- gausParamEstCaruana.STD 
                         tmpEmg.[3] <- exponentialDecayEst
                         tmpEmg
-                    ///
-                    let gaussPrediction =
-                        let paramConti = new ResizeArray<DenseVector>()
-                        let gaussSolOptions = createGaussSolverOption gausParamA
-                        try
-                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
-                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
-                            Some (gaussParamA, gaussYPredicted)
-                        with 
-                        | _ as ex  -> 
-                            None
- 
+
                     ///
                     let emgPrediction =
                         [|exponentialDecayEst*0.75 ..  exponentialDecayEst|]
@@ -734,7 +738,7 @@ module Quantification =
                             integralOfGaussian paramV
                         //
                         let deltaScanTimePeakApex = scanTime - gausParamEstCaruana.MeanX
-                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
+                        Some (createQuantificationResult FitBothModels.False paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
                     | _ as ex -> 
                         None
