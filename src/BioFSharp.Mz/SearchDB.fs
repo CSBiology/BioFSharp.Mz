@@ -5,8 +5,7 @@ open BioFSharp
 open BioFSharp.IO
 
 open System
-open FSharp.Care.Collections
-open FSharp.Care.Monads
+open FSharpAux
 open AminoAcids 
 open ModificationInfo
 //open BioSequences
@@ -14,7 +13,6 @@ open ModificationInfo
 module SearchDB =
     
     open System.Data.SQLite
-    open Either
 
     type SearchModType =
         | Minus
@@ -274,17 +272,7 @@ module SearchDB =
                                                  PRIMARY KEY (ID ASC)
                                                  )"
                 let cmd  = new SQLiteCommand(querystring, cn)
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("TABLE SearchDbParams",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
 
             /// Creates Table Protein
             let createTableProtein  (cn:SQLiteConnection) =
@@ -295,18 +283,8 @@ module SearchDB =
                                            PRIMARY KEY (ID ASC)
                                            )"
                 let cmd = new SQLiteCommand(querystring, cn)
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("TABLE Protein",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                    
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
 
             /// Creates Table CleavageIndex
@@ -323,17 +301,8 @@ module SearchDB =
                                                  CONSTRAINT PepSequenceID FOREIGN KEY (PepSequenceID) REFERENCES PepSequence (ID)
                                                  )"
                 let cmd = new SQLiteCommand(querystring, cn)
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("TABLE CleavageIndex",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
 
             /// Creates Table PepSequence
@@ -345,17 +314,8 @@ module SearchDB =
                                                CONSTRAINT PepSequenceUnique UNIQUE (Sequence ASC) ON CONFLICT IGNORE
                                                )"
                 let cmd = new SQLiteCommand(querystring, cn)
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("TABLE PepSequence",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
 
             /// Creates Table ModSequence
@@ -371,17 +331,8 @@ module SearchDB =
 	                                           FOREIGN KEY (PepSequenceID) REFERENCES PepSequence (ID) 
                                                )"
                 let cmd = new SQLiteCommand(querystring, cn)
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("TABLE ModSequence",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
 
             //Create Index Statements
@@ -389,47 +340,20 @@ module SearchDB =
             let setMassIndexOnModSequence (cn:SQLiteConnection) = 
                 let querystring = "CREATE INDEX RoundedMassIndex ON ModSequence (RoundedMass ASC) "
                 let cmd = new SQLiteCommand(querystring, cn)    
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("INDEX RoundedMassIndex",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
             let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
                 let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
                 let cmd = new SQLiteCommand(querystring, cn)    
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("INDEX SequenceIndex",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
             let setPepSequenceIDIndexOnCleavageIndex (cn:SQLiteConnection) = 
                 let querystring = "CREATE INDEX PepSequenceIDIndex ON CleavageIndex (PepSequenceID) "
                 let cmd = new SQLiteCommand(querystring, cn)    
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec < 1 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("INDEX SequenceIndex",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
             //let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
             //    let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
             //    let cmd = new SQLiteCommand(querystring, cn)    
@@ -451,17 +375,8 @@ module SearchDB =
                 let querystring = "PRAGMA synchronous = 0 "
                 let cmd = new SQLiteCommand(querystring, cn)
                 // result equals number of affected rows
-                try
-                    let exec = cmd.ExecuteNonQuery()
-                    if  exec > 0 then
-                        Either.succeed cn
-                    else 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create, DBGeneric ("PRAGMA synchronous",exec)) 
-                        |> Either.fail
-                with            
-                | _ as ex -> 
-                        PeptideLookUpError.DbInitialisation (SqlAction.Create,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                cmd.ExecuteNonQuery()
+
 
          
             //Insert Statements
@@ -633,18 +548,11 @@ module SearchDB =
             let selectSearchDbParams (cn:SQLiteConnection) =
                 let querystring = "SELECT * FROM SearchDbParams"
                 let cmd = new SQLiteCommand(querystring, cn)    
-                try         
-                    use reader = cmd.ExecuteReader()            
-                    match reader.Read() with
-                    | true -> (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), 
-                                reader.GetInt32(5), reader.GetInt32(6), reader.GetDouble(7),reader.GetInt32(8), reader.GetInt32(9), reader.GetString(10), reader.GetString(11), reader.GetString(12), reader.GetString(13),reader.GetInt32(14))
-                                |> Either.succeed
-                    | false -> PeptideLookUpError.DbSearchParamsItemNotFound
-                                |> Either.fail             
-                with            
-                | _ as ex -> 
-                    PeptideLookUpError.DbSearchParams (SqlAction.Select,sqlErrorCodeFromException ex) 
-                    |> Either.fail
+                use reader = cmd.ExecuteReader()            
+                match reader.Read() with
+                | true -> Some (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), 
+                            reader.GetInt32(5), reader.GetInt32(6), reader.GetDouble(7),reader.GetInt32(8), reader.GetInt32(9), reader.GetString(10), reader.GetString(11), reader.GetString(12), reader.GetString(13),reader.GetInt32(14))
+                | false -> None
                 
             /// Prepares statement to select all SearchDbParams entries by FastaPath, Protease, MinmissedCleavages, MaxmissedCleavages, MaxMass, MinPepLength, MaxPepLength, IsotopicLabel, MassMode, FixedMods, VariableMods, VarModsThreshold
             let prepareSelectSearchDbParamsbyParams (cn:SQLiteConnection) =
@@ -687,18 +595,11 @@ module SearchDB =
                     cmd.Parameters.["@fixedMods"].Value             <- fixedMods
                     cmd.Parameters.["@variableMods"].Value          <- variableMods
                     cmd.Parameters.["@varModThreshold"].Value       <- varModThreshold
-                    try         
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), 
-                                    reader.GetInt32(5), reader.GetInt32(6), reader.GetDouble(7),reader.GetInt32(8), reader.GetInt32(9), reader.GetString(10), reader.GetString(11), reader.GetString(12), reader.GetString(13),reader.GetInt32(14))
-                                   |> Either.succeed
-                        | false -> PeptideLookUpError.DbSearchParamsItemNotFound
-                                    |> Either.fail             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbSearchParams (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> Some (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), 
+                                reader.GetInt32(5), reader.GetInt32(6), reader.GetDouble(7),reader.GetInt32(8), reader.GetInt32(9), reader.GetString(10), reader.GetString(11), reader.GetString(12), reader.GetString(13),reader.GetInt32(14))
+                    | false -> None       
                 )
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -742,21 +643,14 @@ module SearchDB =
                     cmd.Parameters.["@massMode"].Value              <- massMode
                     cmd.Parameters.["@fixedMods"].Value             <- fixedMods
                     cmd.Parameters.["@variableMods"].Value          <- variableMods
-                    cmd.Parameters.["@varModThreshold"].Value       <- varModThreshold
-                    try         
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetString(12), reader.GetString(13))
-                                   |> fun (id,fixMods,varMods) -> Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(fixMods)@Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(varMods) 
-                                   |> Either.succeed
-                        | false -> PeptideLookUpError.DbSearchParamsItemNotFound
-                                   |> Either.fail             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbSearchParams (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    cmd.Parameters.["@varModThreshold"].Value       <- varModThreshold   
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true ->   (reader.GetInt32(0), reader.GetString(12), reader.GetString(13))
+                                |> fun (id,fixMods,varMods) -> Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(fixMods)@Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(varMods) 
+                                |> Some
+                    | false -> None
                 )
-
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             /// Prepares statement to select a Protein entry by ID        
@@ -779,21 +673,13 @@ module SearchDB =
                 cmd.Parameters.Add("@accession", Data.DbType.String) |> ignore       
                 (fun (accession:string)  ->         
                     cmd.Parameters.["@accession"].Value <- accession
-        
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2)) |> Either.succeed
-                        | false -> PeptideLookUpError.DbProteinItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbProtein (SqlAction.Select,sqlErrorCodeFromException ex) 
-                            |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2))
+                    | false -> -1,"",""
                 )
+
+
             /// Prepares statement to select a Protein entry by Sequence     
             let prepareSelectProteinBySequence (cn:SQLiteConnection) (tr) =
                 let querystring = "SELECT * FROM Protein WHERE Sequence=@sequence"
@@ -801,20 +687,12 @@ module SearchDB =
                 cmd.Parameters.Add("@sequence", Data.DbType.String) |> ignore       
                 (fun (sequence:string)  ->         
                     cmd.Parameters.["@sequence"].Value <- sequence
-        
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2)) |> Either.succeed
-                        | false -> PeptideLookUpError.DbProteinItemNotFound
-                                    |> Either.fail
 
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbProtein (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> (reader.GetInt32(0),reader.GetString(1), reader.GetString(2))
+                    | false -> -1,"",""
+
                 )
 
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -824,22 +702,11 @@ module SearchDB =
                 let cmd = new SQLiteCommand(querystring, cn, tr) 
                 cmd.Parameters.Add("@proteinID", Data.DbType.Int64) |> ignore       
                 (fun (proteinID:int32)  ->         
-                    cmd.Parameters.["@proteinID"].Value <- proteinID
-        
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5)) 
-                                  |> Either.succeed
-                        | false -> PeptideLookUpError.DbCleavageIndexItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbCleavageIndex (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    cmd.Parameters.["@proteinID"].Value <- proteinID     
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> (reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5)) 
+                    | false -> -1,-1,-1,-1,-1,-1
                 )
 
             /// Prepares statement to select a CleavageIndex entry PepSequenceID 
@@ -865,18 +732,10 @@ module SearchDB =
                 cmd.Parameters.Add("@sequence", Data.DbType.String) |> ignore       
                 (fun (sequence:string)  ->         
                     cmd.Parameters.["@sequence"].Value <- sequence
-                    try       
-                        use reader = cmd.ExecuteReader()
-                        match reader.Read() with 
-                        | true ->  reader.GetInt32(0) |> Either.succeed         
-                        | false -> PeptideLookUpError.DbPepSequenceItemNotFound
-                                   |> Either.fail
-
-
-                    with
-                    | _ as ex -> 
-                        PeptideLookUpError.DbCleavageIndex (SqlAction.Select,sqlErrorCodeFromException ex)
-                        |> Either.fail
+                    use reader = cmd.ExecuteReader()
+                    match reader.Read() with 
+                    | true ->  reader.GetInt32(0) 
+                    | false -> -1
                 )
             /// Prepares statement to select a PepSequence entry by PepSequence - Version without try.. with pattern to enhance the Select performance
             let prepareSelectPepSequenceBySequence (cn:SQLiteConnection) (tr) =
@@ -898,21 +757,13 @@ module SearchDB =
                 cmd.Parameters.Add("@id", Data.DbType.Int32) |> ignore       
                 (fun (id:int32)  ->        
                     cmd.Parameters.["@id"].Value <- id
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true ->  (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetInt32(5)) 
-                                   |> Either.succeed
-                        | false -> PeptideLookUpError.DbModSequenceItemNotFound
-                                   |> Either.fail
 
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbModSequence (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true ->  (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetInt32(5))
+                    | false -> -1,-1,nan,-1L,"",-1
                 )
+
             /// Prepares statement to select a ModSequence entry by PepSequenceID
             let prepareSelectModsequenceByPepSequenceID (cn:SQLiteConnection) (tr) =
                 let querystring = "SELECT * FROM ModSequence WHERE PepSequenceID=@pepSequenceID"
@@ -920,20 +771,11 @@ module SearchDB =
                 cmd.Parameters.Add("@pepSequenceID", Data.DbType.Int32) |> ignore       
                 (fun (pepSequenceID:int32)  ->        
                     cmd.Parameters.["@pepSequenceID"].Value <- pepSequenceID
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true ->  (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5)) 
-                                   |> Either.succeed
-                        | false -> PeptideLookUpError.DbModSequenceItemNotFound
-                                    |> Either.fail
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true ->  (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5)) 
+                    | false -> -1,-1,nan,-1L,"",""
 
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbModSequence (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
                 )
 
             /// Prepares statement to select a ModSequence entry by Mass
@@ -943,21 +785,11 @@ module SearchDB =
                 cmd.Parameters.Add("@mass", Data.DbType.Int32) |> ignore       
                 (fun (mass: int)  ->        
                     cmd.Parameters.["@mass"].Value <- mass
-                    try
-                        
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5))  
-                                  |> Either.succeed
-                        | false -> PeptideLookUpError.DbModSequenceItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbModSequence (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
-                )
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5))  
+                    | false -> -1,-1,nan,-1L,"",""
+            )
 
             /// Prepares statement to select a ModSequence entry by Massrange (Between selected Mass -/+ the selected toleranceWidth)
             let prepareSelectModsequenceByMassRange (cn:SQLiteConnection) tr =
@@ -981,21 +813,11 @@ module SearchDB =
                 let cmd = new SQLiteCommand(querystring, cn, tr) 
                 cmd.Parameters.Add("@sequence", Data.DbType.Double) |> ignore       
                 (fun (sequence:string)  ->        
-                    cmd.Parameters.["@sequence"].Value <- sequence
-                    try
-                                    
-                        use reader = cmd.ExecuteReader()            
-                        match reader.Read() with
-                        | true -> (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5))  
-                                  |> Either.succeed
-                        | false -> PeptideLookUpError.DbModSequenceItemNotFound
-                                    |> Either.fail
-
-             
-                    with            
-                    | _ as ex -> 
-                        PeptideLookUpError.DbModSequence (SqlAction.Select,sqlErrorCodeFromException ex) 
-                        |> Either.fail
+                    cmd.Parameters.["@sequence"].Value <- sequence         
+                    use reader = cmd.ExecuteReader()            
+                    match reader.Read() with
+                    | true -> (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5))  
+                    | false -> -1,-1,nan,-1L,"",""
                 )
                 //#define SQLITE_ERROR        1   /* SQL error or missing database */
                 //#define SQLITE_INTERNAL     2   /* Internal logic error in SQLite */
@@ -1035,8 +857,8 @@ module SearchDB =
         /// Returns the database name given the SearchDbParams
         let getNameOf (sdbParams:SearchDbParams) =
             sprintf "%s\\%s.db" 
-                (sdbParams.DbFolder |> FSharp.Care.IO.PathFileName.normalizeFileName)
-                (sdbParams.Name |> FSharp.Care.IO.PathFileName.fileNameWithoutExtension )
+                (sdbParams.DbFolder |> FSharpAux.IO.PathFileName.normalizeFileName)
+                (sdbParams.Name |> FSharpAux.IO.PathFileName.fileNameWithoutExtension )
 
         /// Returns a comma seperated string of given search modification list
         let getJsonStringOf item =
@@ -1061,7 +883,7 @@ module SearchDB =
                     sdbParams.MaxMissedCleavages sdbParams.MaxMass sdbParams.MinPepLength sdbParams.MaxPepLength (getJsonStringOf sdbParams.IsotopicMod) (getJsonStringOf sdbParams.MassMode)
                     (getJsonStringOf sdbParams.FixedMods) (getJsonStringOf sdbParams.VariableMods) sdbParams.VarModThreshold 
             match allSMods with
-            | Success allSMods -> 
+            | Some allSMods -> 
                 allSMods 
                 |> List.map (fun x -> x.XModCode , x)
                 |> Map.ofList 
@@ -1070,37 +892,36 @@ module SearchDB =
         /// Returns true if a db exists with the same parameter content
         let isExistsBy (sdbParams:SearchDbParams) =       
             let fileName = getNameOf sdbParams
-            match FSharp.Care.IO.FileIO.fileExists fileName with 
+            match FSharpAux.IO.FileIO.fileExists fileName with 
             | true  -> 
                 let connectionString = sprintf "Data Source=%s;Version=3" fileName
                 use cn = new SQLiteConnection(connectionString)
                 cn.Open()
                 match selectSdbParamsby cn sdbParams with
-                | Success _   -> true
-                | Failure _   -> false                                                                           
+                | Some _   -> true
+                | None   -> false                                                                           
             | false -> false
 
     
         /// Create a new file instance of the DB schema. Deletes already existing instance.
         let initDB fileName =
     
-            let _ = FSharp.Care.IO.FileIO.DeleteFile fileName 
+            let _ = FSharpAux.IO.FileIO.DeleteFile fileName 
 
             let connectionString = sprintf "Data Source=%s;Version=3" fileName
             use cn = new SQLiteConnection(connectionString)
   
-            let initDB' =
-                switch (tee (fun (cn:SQLiteConnection) -> cn.Open()))
-                >=> SQLiteQuery.createTableSearchDbParams
-                >=> SQLiteQuery.createTableProtein
-                >=> SQLiteQuery.createTableCleavageIndex
-                >=> SQLiteQuery.createTablePepSequence
-                >=> SQLiteQuery.createTableModSequence
-                >=> SQLiteQuery.setSequenceIndexOnPepSequence
-                >=> switch (tee (fun cn -> cn.Close()))
+            
+            cn.Open()
+            SQLiteQuery.createTableSearchDbParams       cn |> ignore
+            SQLiteQuery.createTableProtein              cn |> ignore
+            SQLiteQuery.createTableCleavageIndex        cn |> ignore
+            SQLiteQuery.createTablePepSequence          cn |> ignore
+            SQLiteQuery.createTableModSequence          cn |> ignore
+            SQLiteQuery.setSequenceIndexOnPepSequence   cn |> ignore
+            cn.Close()
         
-            initDB' cn
-
+            
 
         /// Bulk insert for a sequence of ProteinContainers
         let bulkInsert (cn:SQLiteConnection) (data:seq<ProteinContainer>) =
@@ -1146,7 +967,7 @@ module SearchDB =
 
     module ModCombinator =    
     
-        open FSharp.Care.Collections
+        open FSharpAux 
         open BioFSharp    
         open BioFSharp.AminoAcids
         open BioFSharp.ModificationInfo
@@ -1396,7 +1217,7 @@ module SearchDB =
         cn.Open()
         let tr = cn.BeginTransaction()
         let selectCleavageIdxByPepSeqID   = Db.SQLiteQuery.prepareSelectCleavageIndexByPepSequenceID cn tr
-        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID' cn tr        
+        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID cn tr        
         (fun pepSequenceID -> 
                 selectCleavageIdxByPepSeqID pepSequenceID
                 |> List.map (fun (_,protID,_,_,_,_) -> selectProteinByProtID protID )
@@ -1428,49 +1249,48 @@ module SearchDB =
         else
             // Create db file
             let dbFileName = Db.getNameOf sdbParams
-            match Db.initDB dbFileName with
-            | Failure _ -> failwith "Error"
-            | Success _ ->
-                // prepares LookUpMaps of modLookUp based on the dbParams
-                let modLookUp = ModCombinator.modLookUpOf sdbParams
-                // Set name of global modification
-                let globalMod = if modLookUp.Isotopic.IsNone then 0 else 1
-                let connectionString = sprintf "Data Source=%s;Version=3" dbFileName
-                let cn = new SQLiteConnection(connectionString)
-                cn.Open()
-                let _ = Db.insertSdbParams cn sdbParams
-                cn.Close()
-                // Read Fasta
-                let fasta = 
-                    BioFSharp.IO.FastA.fromFile (BioArray.ofAminoAcidString) sdbParams.FastaPath                
-                // Digest
-                fasta
-                |> Seq.mapi 
-                    (fun i fastaItem ->
-                        let proteinId = i // TODO                        
-                        let peptideContainer =
-                            Digestion.BioArray.digest sdbParams.Protease proteinId fastaItem.Sequence
-                            |> Digestion.BioArray.concernMissCleavages sdbParams.MinMissedCleavages sdbParams.MaxMissedCleavages
-                            |> Array.filter (fun x -> 
-                                                let cleavageRange = x.MissCleavageEnd - x.MissCleavageStart
-                                                cleavageRange > sdbParams.MinPepLength && cleavageRange < sdbParams.MaxPepLength 
-                                            )
-                            |> Array.mapi (fun peptideId pep ->
-                                                let container = 
-                                                    ModCombinator.combineToModString modLookUp sdbParams.VarModThreshold sdbParams.MassFunction pep.PepSequence
-                                                createPeptideContainer (proteinId*100000+peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
-                                            )
+            Db.initDB dbFileName
+
+            // prepares LookUpMaps of modLookUp based on the dbParams
+            let modLookUp = ModCombinator.modLookUpOf sdbParams
+            // Set name of global modification
+            let globalMod = if modLookUp.Isotopic.IsNone then 0 else 1
+            let connectionString = sprintf "Data Source=%s;Version=3" dbFileName
+            let cn = new SQLiteConnection(connectionString)
+            cn.Open()
+            let _ = Db.insertSdbParams cn sdbParams
+            cn.Close()
+            // Read Fasta
+            let fasta = 
+                BioFSharp.IO.FastA.fromFile (BioArray.ofAminoAcidString) sdbParams.FastaPath                
+            // Digest
+            fasta
+            |> Seq.mapi 
+                (fun i fastaItem ->
+                    let proteinId = i // TODO                        
+                    let peptideContainer =
+                        Digestion.BioArray.digest sdbParams.Protease proteinId fastaItem.Sequence
+                        |> Digestion.BioArray.concernMissCleavages sdbParams.MinMissedCleavages sdbParams.MaxMissedCleavages
+                        |> Array.filter (fun x -> 
+                                            let cleavageRange = x.MissCleavageEnd - x.MissCleavageStart
+                                            cleavageRange > sdbParams.MinPepLength && cleavageRange < sdbParams.MaxPepLength 
+                                        )
+                        |> Array.mapi (fun peptideId pep ->
+                                            let container = 
+                                                ModCombinator.combineToModString modLookUp sdbParams.VarModThreshold sdbParams.MassFunction pep.PepSequence
+                                            createPeptideContainer (proteinId*100000+peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
+                                        )
                         
-                        createProteinContainer 
-                            proteinId 
-                                (sdbParams.FastaHeaderToName fastaItem.Header) 
-                                    (BioArray.toString fastaItem.Sequence) 
-                                        (peptideContainer |> List.ofArray)
-                    ) 
-                |> Db.bulkInsert cn
-                |> ignore                
+                    createProteinContainer 
+                        proteinId 
+                            (sdbParams.FastaHeaderToName fastaItem.Header) 
+                                (BioArray.toString fastaItem.Sequence) 
+                                    (peptideContainer |> List.ofArray)
+                ) 
+            |> Db.bulkInsert cn
+            |> ignore                
                 
-                getPeptideLookUpFromFileBy sdbParams
+            getPeptideLookUpFromFileBy sdbParams
 
     ///    
     let getPeptideLookUpWithMemBy calcIonSeries massFunction (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) lowerMass upperMass = 
@@ -1531,12 +1351,12 @@ module SearchDB =
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
         match Db.SQLiteQuery.selectSearchDbParams cn with 
-        | Success (iD,name,fo,fp,pr,minmscl,maxmscl,mass,minpL,maxpL,isoL,mMode,fMods,vMods,vThr) -> 
+        | Some (iD,name,fo,fp,pr,minmscl,maxmscl,mass,minpL,maxpL,isoL,mMode,fMods,vMods,vThr) -> 
             createSearchDbParams 
                 name fo fp id (Digestion.Table.getProteaseBy pr) minmscl maxmscl mass minpL maxpL 
                     (Newtonsoft.Json.JsonConvert.DeserializeObject<SearchInfoIsotopic list>(isoL)) (Newtonsoft.Json.JsonConvert.DeserializeObject<MassMode>(mMode)) (massFBy (Newtonsoft.Json.JsonConvert.DeserializeObject<MassMode>(mMode))) 
                         (Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(fMods)) (Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(vMods)) vThr
-        | Failure (_) ->
+        | None ->
             failwith "This database does not contain any SearchParameters. It is not recommended to work with this file."
 
     module Table =

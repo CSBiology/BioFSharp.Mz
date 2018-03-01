@@ -4,7 +4,7 @@ module Quantification =
     
     open System
     open BioFSharp
-    open FSharp.Care 
+    open FSharpAux
 
     open Peaks
     open PeakArray

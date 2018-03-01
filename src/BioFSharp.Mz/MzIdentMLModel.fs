@@ -5,9 +5,7 @@ open BioFSharp
 open BioFSharp.IO
 
 open System
-open FSharp.Care
-open FSharp.Care.Collections
-open FSharp.Care.Monads
+open FSharpAux
 open AminoAcids 
 open ModificationInfo
 open System.Data
@@ -4896,10 +4894,8 @@ module MzIdentMLModel =
                 readerloop reader []
 
 
-        open FSharp.Care.Monads.Either
-
         let initDB fileName =
-            let _ = FSharp.Care.IO.FileIO.DeleteFile fileName 
+            let _ = FSharpAux.IO.FileIO.DeleteFile fileName 
             let connectionString = sprintf "Data Source=%s;Version=3" fileName
             use cn = new SQLiteConnection(connectionString)
             cn.Open()   

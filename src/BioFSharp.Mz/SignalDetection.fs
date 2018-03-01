@@ -4,9 +4,7 @@ open BioFSharp
 open BioFSharp.IO
 
 open System
-open FSharp.Care
-open FSharp.Care.Collections
-open FSharp.Care.Monads
+open FSharpAux
 open AminoAcids 
 open ModificationInfo
 
@@ -18,8 +16,6 @@ module SignalDetection =
 
     module Filtering =
 
-        open FSharp.Care
-        open FSharp.Care.Collections
         open MathNet.Numerics
         open MathNet.Numerics.LinearAlgebra
 

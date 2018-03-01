@@ -4,7 +4,7 @@ open BioFSharp
 open SearchDB
 open Fragmentation
 open TheoreticalSpectra
-open FSharp.Care
+open FSharpAux
 open SearchEngineResult
 
 open MathNet.Numerics

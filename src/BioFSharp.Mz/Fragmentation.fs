@@ -3,8 +3,7 @@
 module Fragmentation =
 
     open System
-    open FSharp.Care
-    open FSharp.Care.Collections
+    open FSharpAux
     open BioFSharp
     open BioFSharp.IO
 
