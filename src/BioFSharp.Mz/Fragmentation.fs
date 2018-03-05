@@ -311,6 +311,7 @@ module Fragmentation =
         let zOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
 
+        ///    
         let inline fragmentMasses (nTerminalSeries) (cTerminalSeries) (massFunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             let targetMasses = 
                 let nTerm = nTerminalSeries massFunction aal
@@ -322,6 +323,7 @@ module Fragmentation =
                 nTerm@cTerm
             createFragmentMasses targetMasses decoyMasses        
  
+        
  //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
     //        let currentCO = massDiffAX_CO label 
     //        rawMass |> List.map (fun n ->  n - currentCO)

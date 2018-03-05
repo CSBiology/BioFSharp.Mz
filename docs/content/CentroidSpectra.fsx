@@ -7,7 +7,7 @@
 #r "../../src/BioFSharp.Mz/bin/Release/BioFSharp.dll"
 #r "../../src/BioFSharp.Mz/bin/Release/BioFSharp.IO.dll"
 #r "../../src/BioFSharp.Mz/bin/Release/BioFSharp.Mz.dll"
-//#r "../../packages/build/FSharp.Plotly/lib/net40/Fsharp.Plotly.dll"
+#r @"C:\Users\david\Source\Repos\FSharp.Plotly\bin\FSharp.Plotly.dll"
 (**
 Spectrum centroidization
 ========================
@@ -26,7 +26,7 @@ let ms1DataTest =
     Mgf.readMgf (__SOURCE_DIRECTORY__ + "/data/ms1Example.mgf")  
     |> List.head
 
-
+[|10.*0.75 ..  10.|]
 #time
 /// Returns a tuple of float arrays (mzData[]*intensityData[]) each containing the processed data
 ///
@@ -40,6 +40,7 @@ let ms1PeakPicking mzData intensityData =
     let parameters = SignalDetection.Wavelet.createWaveletParameters 3 1. 0.1 95. 1.
     BioFSharp.Mz.SignalDetection.Wavelet.toCentroidWithRicker2D parameters mzData intensityData
  
+open FSharp.Plotly
 let centroidMS1Spectrum = 
             ms1PeakPicking ms1DataTest.Mass ms1DataTest.Intensity
 
@@ -70,7 +71,8 @@ let ms2PeakPicking (mzData:float []) (intensityData: float []) =
 
 let centroidMS2Spectrum = 
             ms2PeakPicking ms2DataTest.Mass ms2DataTest.Intensity
-       
+
+open FSharp.plot       
 [
     Chart.Point(ms2DataTest.Mass, ms2DataTest.Intensity, Name="raw data");
     Chart.Point(fst centroidMS2Spectrum,snd centroidMS2Spectrum,Name="centroided Data")    
