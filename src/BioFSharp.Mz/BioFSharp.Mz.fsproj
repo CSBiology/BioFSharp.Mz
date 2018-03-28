@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BioFSharp\src\BioFSharp.IO\BioFSharp.IO.fsproj" />
     <ProjectReference Include="..\..\..\BioFSharp\src\BioFSharp\BioFSharp.fsproj" />
+    <ProjectReference Include="..\..\..\FSharp.Stats\src\FSharp.Stats\FSharp.Stats.fsproj" />
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux.IO\FSharpAux.IO.fsproj" />
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux\FSharpAux.fsproj" />
   </ItemGroup>

@@ -3,14 +3,10 @@
 module Quantification =
     
     open System
-    open BioFSharp
-    open FSharpAux
 
-    open Peaks
-    open PeakArray
-    open PeakList
+
     open SignalDetection
-    open MathNet.Numerics.LinearAlgebra.Double
+    open FSharp.Stats
 
     module Integration = 
 
@@ -74,10 +70,6 @@ module Quantification =
         /// Warning: This method is sensitive to noisy data. If the noise level of the input parameters is high, smoothing of 
         /// the data is strongly recommended. 
         let caruanaAlgorithm (mzData:float []) (intensityData:float []) =
-            let mzData,intensityData = 
-                Array.zip mzData intensityData
-                |> Array.filter (fun (_,intensity) -> intensity <> 0.)
-                |> Array.unzip
             if mzData.Length < 3 || intensityData.Length < 3 then None 
             else 
             let logTransIntensityData = 
@@ -98,6 +90,7 @@ module Quantification =
             Some (createGausParams amplitude meanX std fwhm)
 
     module Fitting = 
+        open FSharp.Stats.Algebra
 
         ///
         let standardErrorOfPrediction dOF (model:float []) (data:float [])  =
@@ -114,9 +107,9 @@ module Quantification =
             DescFuncBody    : string
             ParameterNames  : string []
             ///originally GetValue; contains function body
-            GetFunctionValue    : (DenseVector -> float -> float)
+            GetFunctionValue    : (Vector<float> -> float -> float)
             ///Gradient: Vector of partial derivations of function body
-            GetGradientValue        : (DenseVector -> DenseVector -> float -> DenseVector )
+            GetGradientValue        : (Vector<float> -> Vector<float> -> float -> Vector<float> )
             }
         
         ///
@@ -136,36 +129,34 @@ module Quantification =
             MinimumDeltaValue = minimumDeltaValue; MinimumDeltaParameters = minimumDeltaParameters; MaximumIterations = maximumIterations; InitialParamGuess=initialParamGuess}
 
         /// Returns the residual sum of squares (RSS) as a measure of discrepancy between the data and the used estimation model.
-        let getRSS (model: Model) (xData: float[]) (yData: float []) (paramVector: DenseVector) =
+        let getRSS (model: Model) (xData: float[]) (yData: float []) (paramVector: Vector<float>) =
             let sumOfSquaredResiduals =
                 Array.fold2 (fun acc xValue yValue ->  
                                 let yValueEst = model.GetFunctionValue paramVector xValue
                                 acc + ((yValueEst - yValue) **2.)
                             ) 0.0 xData yData
         
-            sumOfSquaredResiduals 
+            sumOfSquaredResiduals
 
-        /// Returns the Jacobian matrix of a given model and discrete parameters.
-        let getJacobianOf (model: Model) dataPointCount (xData: float[]) (paramVector: DenseVector) (jacobian: Matrix ) =
+        let getJacobianOf (model: Model) dataPointCount (xData: float[]) (paramVector: Vector<float>) (jacobian: Matrix<float> ) =
             // Nr. of Parameters
-            let paramCount = paramVector.Count
+            let paramCount = paramVector.Length
             // populate Jacobian Matrix
             for i = 0 to dataPointCount-1 do 
-                let gradient = new DenseVector(paramCount)
+                let gradient = Vector.zero paramCount
                 model.GetGradientValue paramVector gradient xData.[i] |> ignore
-                jacobian.SetRow(i,gradient) 
-          
+                Matrix.setRow jacobian i gradient            
         /// Returns the residual vector, each row i contains the difference between the yEst_i and the yData_i. 
-        let getResidualVector (model: Model) dataPointCount (xData: float[]) (yData: float []) (paramVector: DenseVector) (residualVector: DenseVector) = 
+        let getResidualVector (model: Model) dataPointCount (xData: float[]) (yData: float []) (paramVector: Vector<float>) (residualVector: Vector<float>) = 
             for i = 0 to dataPointCount-1 do 
                 let yValueEst = model.GetFunctionValue paramVector xData.[i]
                 residualVector.[i] <- (yValueEst - yData.[i])
 
         /// Returns true if convergence criteria are met or a user defined number of iiterations has been carried out
-        let shouldTerminate (currentValueRSS: float) (newValueRSS: float) (iterationCount:int) (currentParamGuess:DenseVector) 
-                (newParamGuess:DenseVector) (solverOptions: SolverOptions)  = 
+        let shouldTerminate (currentValueRSS: float) (newValueRSS: float) (iterationCount:int) (currentParamGuess:Vector<float>) 
+                (newParamGuess:Vector<float>) (solverOptions: SolverOptions)  = 
             if abs (newValueRSS-currentValueRSS) <= solverOptions.MinimumDeltaValue ||
-               newParamGuess.Subtract(currentParamGuess).Norm(2.0) <= solverOptions.MinimumDeltaParameters ||
+               Vector.sub newParamGuess currentParamGuess |> Vector.norm <= solverOptions.MinimumDeltaParameters ||
                iterationCount >= solverOptions.MaximumIterations then
                 false
             else 
@@ -180,8 +171,8 @@ module Quantification =
             let paramCount = solverOptions.InitialParamGuess.Length
             let dataPointCount = xData.Length
 
-            let currentParamGuess = new DenseVector(solverOptions.InitialParamGuess)
-            let newParamGuess     = new DenseVector(paramCount)
+            let currentParamGuess = Vector.ofArray solverOptions.InitialParamGuess
+            let newParamGuess     = Vector.zero paramCount
 
             let mutable currentValueRSS = 0.0
             let mutable newValueRSS = 0.0
@@ -190,18 +181,25 @@ module Quantification =
 
             while (anotherIteration = true) do 
 
-                let jacobian       = new DenseMatrix(dataPointCount, paramCount)
-                let residualVector = new DenseVector(dataPointCount)
+                let jacobian       = Matrix.create dataPointCount paramCount 0.
+                let residualVector = Vector.create dataPointCount 0.
                 /// 
                 getJacobianOf model dataPointCount xData currentParamGuess jacobian |> ignore
             
                 ///
                 getResidualVector model dataPointCount xData yData currentParamGuess residualVector |> ignore  
                 /// 
-                let step = jacobian.Transpose().Multiply(jacobian).Cholesky().Solve(jacobian.Transpose().Multiply(residualVector))
+                let step = 
+                    Matrix.transpose jacobian
+                    |> Matrix.mul jacobian
+                    |> LinearAlgebra.Cholesky
+                    |> fun c ->                         
+                        Matrix.mulV (Matrix.transpose jacobian) residualVector
+                        |> LinearAlgebra.SolveLinearSystem c
+
         
                 ///
-                currentParamGuess.Subtract(step, newParamGuess)
+                let newParamGuess = Vector.sub currentParamGuess step
 
                 /// 
                 newValueRSS <- getRSS model xData yData newParamGuess
@@ -213,7 +211,8 @@ module Quantification =
                 anotherIteration <- shouldTerminate currentValueRSS newValueRSS paramsAtIteration.Count currentParamGuess newParamGuess solverOptions
 
                 /// 
-                newParamGuess.CopyTo currentParamGuess
+                for i = 0 to newParamGuess.Length do
+                    currentParamGuess.[i] <- newParamGuess.[i]
 
                 /// 
                 currentValueRSS <- newValueRSS
@@ -234,9 +233,9 @@ module Quantification =
 
             let mutable lambda = lambdaInitial
 
-            let currentParamGuess = new DenseVector(solverOptions.InitialParamGuess)
-            let newParamGuess     = new DenseVector(paramCount)
-
+            let currentParamGuess = Vector.ofArray solverOptions.InitialParamGuess
+            let newParamGuess     = Vector.zero paramCount
+            
             let mutable currentValueRSS = 0.0
             let mutable newValueRSS = 0.0
             
@@ -245,8 +244,8 @@ module Quantification =
 
             while (anotherIteration = true) do 
 
-                let jacobian       = new DenseMatrix(dataPointCount, paramCount)
-                let residualVector = new DenseVector(dataPointCount)
+                let jacobian       = Matrix.zero dataPointCount paramCount
+                let residualVector = Vector.zero dataPointCount
                 /// 
                 getJacobianOf model dataPointCount xData currentParamGuess jacobian 
             
@@ -254,16 +253,23 @@ module Quantification =
                 getResidualVector model dataPointCount xData yData currentParamGuess residualVector 
 
                 /// 
-                let hessian  = jacobian.Transpose().Multiply(jacobian)
+                let hessian  = Matrix.transpose jacobian |> fun x -> Matrix.mul x jacobian
         
                 ///
-                let diagonal = new DiagonalMatrix(paramCount, paramCount, hessian.Diagonal().ToArray() )
+                let diagonal = Matrix.initDiagonal hessian.Diagonal
+                    //new DiagonalMatrix(paramCount, paramCount, hessian.Diagonal().ToArray() )
 
                 ///
-                let step     = (hessian.Add(diagonal.Multiply(lambda))).Cholesky().Solve(jacobian.Transpose().Multiply(residualVector))
+                let step     = 
+                    Matrix.scale lambda diagonal
+                    |> Matrix.add hessian 
+                    |> LinearAlgebra.Cholesky
+                    |> fun c ->                         
+                        Matrix.mulV (Matrix.transpose jacobian) residualVector
+                        |> LinearAlgebra.SolveLinearSystem c
 
                 ///
-                currentParamGuess.Subtract(step, newParamGuess)
+                Vector.inplace_mapi (fun i _ -> currentParamGuess.[i] - step.[i]) newParamGuess
 
                 /// 
                 newValueRSS <- getRSS model xData yData newParamGuess
@@ -278,7 +284,8 @@ module Quantification =
 
                 if newValueRSS < currentValueRSS then
                     /// 
-                    newParamGuess.CopyTo currentParamGuess
+                    Vector.inplace_mapi (fun i _ -> newParamGuess.[i]) currentParamGuess
+                    
 
                     /// 
                     currentValueRSS <- newValueRSS
@@ -297,8 +304,8 @@ module Quantification =
             let lineModel = {
                 DescFuncBody= "y = a * x + b"
                 ParameterNames= [|"a";"b"|]
-                GetFunctionValue = (fun (parameterVector:DenseVector) xValue -> (parameterVector.[0] * xValue) + parameterVector.[1])
-                GetGradientValue = (fun (parameterVector:DenseVector) (gradientVector: DenseVector) xValue -> 
+                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> (parameterVector.[0] * xValue) + parameterVector.[1])
+                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
                                     gradientVector.[0] <- xValue  
                                     gradientVector.[1] <- 1.0 
                                     gradientVector)
@@ -318,8 +325,8 @@ module Quantification =
             let parabolaModel = {
                 DescFuncBody= "y = a * x^2 + b * x + c"
                 ParameterNames= [|"a";"b";"c"|]
-                GetFunctionValue = (fun (parameterVector:DenseVector) xValue -> (parameterVector.[0] * xValue**2.) + parameterVector.[1] * xValue + parameterVector.[2])
-                GetGradientValue = (fun (parameterVector:DenseVector) (gradientVector: DenseVector) xValue -> 
+                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> (parameterVector.[0] * xValue**2.) + parameterVector.[1] * xValue + parameterVector.[2])
+                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
                                     gradientVector.[0] <- xValue**2.  
                                     gradientVector.[1] <- xValue 
                                     gradientVector.[2] <- 1.0
@@ -338,8 +345,8 @@ module Quantification =
             let gaussModel = {
                 DescFuncBody= "y = amp * exp( -1. * ( ( ( (x-meanX)**2. ) / (2.*std**2.)) ) )"
                 ParameterNames= [|"amp";"meanX";"std"|]
-                GetFunctionValue = (fun (parameterVector:DenseVector) xValue -> parameterVector.[0] * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ))
-                GetGradientValue = (fun (parameterVector:DenseVector) (gradientVector: DenseVector) xValue -> 
+                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> parameterVector.[0] * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ))
+                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
                                     gradientVector.[0] <- exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) )
                                     gradientVector.[1] <- ( (parameterVector.[0] * (xValue-parameterVector.[1]) * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ) ) ) / (parameterVector.[2]**2.)
                                     gradientVector.[2] <- ( (parameterVector.[0] * ((xValue-parameterVector.[1])**2.) * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ) ) ) / (parameterVector.[2]**3.)
@@ -361,8 +368,8 @@ module Quantification =
             let emgModel = {
                 DescFuncBody= "y =  ((amp*std)/tau) * sqrt(System.Math.PI/2.) * exp(1./2. * ((std/tau)**2.) - ((x-meanX)/tau)) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((std/tau)-((x-meanX)/std)))"
                 ParameterNames= [|"amp";"meanX";"std";"tau"|]
-                GetFunctionValue = (fun (parameterVector:DenseVector) xValue ->  ((parameterVector.[0]*parameterVector.[2])/parameterVector.[3]) * sqrt(System.Math.PI/2.) * exp(1./2. * ((parameterVector.[2]/parameterVector.[3])**2.) - ((xValue-parameterVector.[1])/parameterVector.[3])) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((parameterVector.[2]/parameterVector.[3])-((xValue-parameterVector.[1])/parameterVector.[2]))) )
-                GetGradientValue = (fun (parameterVector:DenseVector) (gradientVector: DenseVector) xValue -> 
+                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue ->  ((parameterVector.[0]*parameterVector.[2])/parameterVector.[3]) * sqrt(System.Math.PI/2.) * exp(1./2. * ((parameterVector.[2]/parameterVector.[3])**2.) - ((xValue-parameterVector.[1])/parameterVector.[3])) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((parameterVector.[2]/parameterVector.[3])-((xValue-parameterVector.[1])/parameterVector.[2]))) )
+                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
                                     gradientVector.[0] <- (1./parameterVector.[3]) * 1.25331 * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )
                                 //0 passt
                                     gradientVector.[1] <-  ( (1./parameterVector.[3]**2.) *  1.25331 * parameterVector.[0] * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ) )  
@@ -445,7 +452,7 @@ module Quantification =
         //
         type QuantificationResult = {
             FitBothModels               : FitBothModels
-            EstimatedParameters         : DenseVector
+            EstimatedParameters         : Vector<float>
             SelectedModel               : Fitting.Model
             Area                        : float
             StandardErrorOfPrediction   : float
@@ -461,7 +468,7 @@ module Quantification =
 
 
         ///
-        let integralOfGaussian (coeffs:MathNet.Numerics.LinearAlgebra.Double.DenseVector) =
+        let integralOfGaussian (coeffs:Vector<float>) =
             sqrt(2.) * coeffs.[0] * coeffs.[2] * sqrt(Math.PI)
 
         ///
@@ -471,7 +478,7 @@ module Quantification =
         let createGaussSolverOption = Fitting.createSolverOption 0.0001 0.0001 10000
 
         ///
-        let  findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
+        let private findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
             let rec loopF (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (currentIdx: int) (kLiftOffs: int) (hasRightPeak:bool) = 
                 if currentIdx = labeledSndDevData.Length-1 then 
                     currentIdx, kLiftOffs, hasRightPeak
@@ -489,7 +496,7 @@ module Quantification =
                     // only one Liftoff and no flanking peak indicates a isolated peak and both models can be tested. 
                 if kLiftOffs = 1 && hasRightPeak = false then
                     FitBothModels.True, 
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x >= snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x            
                 // only one Liftoff indicates a convoluted peak, use only Gaussian model            
@@ -501,7 +508,7 @@ module Quantification =
                 // if more than one Liftoff between two peaks is detected, the peaks are well separated and both Models can be tested
                 elif kLiftOffs > 1 then 
                     FitBothModels.True,  
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x        
                 else
@@ -515,9 +522,12 @@ module Quantification =
                     | None   -> xAndYData.Length-1 
                     | Some x -> x
             
+ 
    
         /// 
         let quantify (peakByF:Tag<Care.Extrema,(float*float)> [] -> Care.Extrema -> 'a -> ((int * Tag<Care.Extrema,(float*float)>) option)) windowSizeSGfilter negYThreshold posYThreshold (scanTime: float) (xData :float []) (yData: float [])= 
+
+            printfn "start quantification"
             if xData.Length < 6 || yData.Length < 6 then None
             else
             // Step 0: zip xData and yData
@@ -525,7 +535,7 @@ module Quantification =
                 Array.zip xData yData
             // Step 1: Calculate negative snd derivative of the intensity Data
             let negSndDev = 
-                SignalDetection.Filtering.savitzky_golay windowSizeSGfilter 3 2 3 yData 
+                Signal.Filtering.savitzky_golay windowSizeSGfilter 3 2 3 yData 
                 |> Array.ofSeq
                 |> Array.map (fun x -> x * -1.)    
             // Step 2: label data points to be local Minima or maxima
@@ -585,18 +595,6 @@ module Quantification =
                         tmpGauss
          
                     ///
-                    let gaussPrediction =
-                        let paramConti = new ResizeArray<DenseVector>()
-                        let gaussSolOptions = createGaussSolverOption gausParamA
-                        try
-                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
-                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
-                            Some (gaussParamA, gaussYPredicted)
-                        with 
-                        | _ as ex  -> 
-                            None
- 
-                    ///
                     let exponentialDecayEst = 
                         let startTime = xData.[closestRightLiftOffIdx.Value]
                         let startIntensity = yData.[closestRightLiftOffIdx.Value]
@@ -617,12 +615,23 @@ module Quantification =
                         tmpEmg.[2] <- gausParamEstCaruana.STD 
                         tmpEmg.[3] <- exponentialDecayEst
                         tmpEmg
-
+                    ///
+                    let gaussPrediction =
+                        let paramConti = new ResizeArray<Vector<float>>()
+                        let gaussSolOptions = createGaussSolverOption gausParamA
+                        try
+                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
+                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
+                            Some (gaussParamA, gaussYPredicted)
+                        with 
+                        | _ as ex  -> 
+                            None
+ 
                     ///
                     let emgPrediction =
                         [|exponentialDecayEst*0.75 ..  exponentialDecayEst|]
                         |> Array.map (fun x -> 
-                                        let paramConti = new ResizeArray<DenseVector>()
+                                        let paramConti = new ResizeArray<Vector<float>>()
                                         gausParamEMG.[3] <- x
                                         let emgSolOptions = createEMGSolverOption gausParamEMG
                                         try 
@@ -672,7 +681,7 @@ module Quantification =
                 match modelFunction with
                 | None -> 
                     None       
-                | Some (modelF,(paramV, yData), sEoE) when paramV.Count = 3 ->
+                | Some (modelF,(paramV, yData), sEoE) when paramV.Length = 3 ->
                     try 
                         let area = 
                             //MathNet.Numerics.Integrate.OnClosedInterval((fun x -> (modelF.GetFunctionValue paramV x)),xData.[0],xData.[xData.Length-1])
@@ -682,7 +691,7 @@ module Quantification =
                         Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
                     | _ as ex ->    None
-                | Some (modelF,(paramV, yData), sEoE) when paramV.Count = 4 ->
+                | Some (modelF,(paramV, yData), sEoE) when paramV.Length = 4 ->
                     try 
                         let f = modelF.GetFunctionValue paramV
                         let integrationXData =
@@ -709,7 +718,7 @@ module Quantification =
                         tmpGauss
                     ///
                     let gaussPrediction =
-                        let paramConti = new ResizeArray<DenseVector>()
+                        let paramConti = new ResizeArray<Vector<float>>()
                         let gaussSolOptions = createGaussSolverOption gausParamA
                         try
                             let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti
@@ -738,7 +747,7 @@ module Quantification =
                             integralOfGaussian paramV
                         //
                         let deltaScanTimePeakApex = scanTime - gausParamEstCaruana.MeanX
-                        Some (createQuantificationResult FitBothModels.False paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
+                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
                     | _ as ex -> 
                         None

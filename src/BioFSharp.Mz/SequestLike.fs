@@ -7,32 +7,33 @@ open TheoreticalSpectra
 open FSharpAux
 open SearchEngineResult
 
-open MathNet.Numerics
-open MathNet.Numerics.LinearAlgebra.Double
+open FSharp.Stats
+//open MathNet.Numerics
+//open MathNet.Numerics.LinearAlgebra.Double
 
 module SequestLike =
 
     /// normalize the intensities within a window to maximum of the window
     /// Attention shortens the array  (cuts)
-    let windowNormalizeIntensities (intensities:LinearAlgebra.Vector<float>) (numberOfWindows:int) =
+    let windowNormalizeIntensities (intensities:Vector<float>) (numberOfWindows:int) =
         // finds max within range
-        let rec findMax (array:LinearAlgebra.Vector<float>) (cMax:float) (lowerLimit:int) (counter:int)  =
+        let rec findMax (array:Vector<float>) (cMax:float) (lowerLimit:int) (counter:int)  =
             if counter < lowerLimit then
                 cMax
             else
                 let nMax = max array.[counter] cMax
                 findMax array nMax lowerLimit (counter - 1)
         // sqrt intensities and normalize to maximum within lower-upper limit
-        let normToMaxSqrtInPlace (array:LinearAlgebra.Vector<float>) (lowerLimit:int) (upperLimit:int)  =
+        let normToMaxSqrtInPlace (array:Vector<float>) (lowerLimit:int) (upperLimit:int)  =
             let nMax = sqrt (findMax array 0.0 lowerLimit upperLimit)
             for i = lowerLimit to upperLimit do
                 if nMax > 0. then                
                     array.[i] <- (sqrt array.[i]) / nMax 
                 else
                     array.[i] <- 0.
-        let windowSize =  (intensities.Count / numberOfWindows)    
+        let windowSize =  (intensities.Length / numberOfWindows)    
         let tmpIntensities =            
-            DenseVector.Create( (windowSize*numberOfWindows) ,(fun i -> intensities.[i]))                    
+            Vector.init (windowSize*numberOfWindows) (fun i -> intensities.[i])            
         for i = 1 to numberOfWindows do
             //printfn "window: %i lower: %i counter: %i " i (windowSize * (i - 1)) (windowSize * i - 1)
             normToMaxSqrtInPlace tmpIntensities (windowSize * (i - 1)) (windowSize * i - 1) 
@@ -74,13 +75,13 @@ module SequestLike =
                 yield! recloop [] z fragments |]
 
     ///
-    let shiftedVectorSum (plusMinusMaxDelay:int) (vector:DenseVector) =
-        let shifted (vector:DenseVector) (tau:int) =
+    let shiftedVectorSum (plusMinusMaxDelay:int) (vector:Vector<float>) =
+        let shifted (vector:Vector<float>) (tau:int) =
             vector
-            |> LinearAlgebra.Vector.mapi
+            |> Vector.mapi
                 (fun i x ->
                     let index = i - tau
-                    if (index < 0) || (index > vector.Count - 1) then 
+                    if (index < 0) || (index > vector.Length - 1) then 
                         0.
                     else
                         vector.[index] )
@@ -89,11 +90,11 @@ module SequestLike =
                 accum
             else
                 accumVector (accum + (shifted vector state)) (state - 1) (max)
-        let emtyVector = DenseVector (Array.zeroCreate vector.Count)
+        let emtyVector = Vector.zero vector.Length
         let plus  = accumVector emtyVector (plusMinusMaxDelay) (1)
         let minus = accumVector emtyVector (-1) (-plusMinusMaxDelay)
         (plus + minus)
-        |> LinearAlgebra.Vector.map (fun x ->  x / (float plusMinusMaxDelay * 2.))
+        |> Vector.map (fun x ->  x / (float plusMinusMaxDelay * 2.))
        
     ///
     let createShiftedMatrix (plusMinusMaxDelay:int) (array:float[]) =
@@ -170,8 +171,8 @@ module SequestLike =
     /// TODO: DELTA THISTOMeanNomalizedDelta
 
     ///
-    let calcXCorr (p_nis:LinearAlgebra.Vector<float>) (ms_nis:LinearAlgebra.Vector<float>) =
-        let tmp = p_nis * ms_nis 
+    let calcXCorr (p_nis:Vector<float>) (ms_nis:Vector<float>) =
+        let tmp = Vector.dot p_nis ms_nis 
         if tmp < 0. then 0. else tmp 
 
     ///
@@ -207,7 +208,7 @@ module SequestLike =
         TheoreticalSpectra.getTheoSpecs peaksToNormalizedIntensityArray scanlimits chargeState possiblePeptideInfos
 
     ///          
-    let calcSequestScore scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<LinearAlgebra.Vector<float>>>) spectrumID = 
+    let calcSequestScore scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<Vector<float>>>) spectrumID = 
         let fCharge = float chargeState
         // measured normailzed intensity array (spectrum) minus auto-correlation
         let ms_nis =  spectrumToIntensityArrayMinusAutoCorrelation scanlimits spectrum
@@ -233,7 +234,7 @@ module SequestLike =
         |> calcNormDeltaNext
         
     ///          
-    let calcSequestScoreParallel scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<LinearAlgebra.Vector<float>>>) spectrumID = 
+    let calcSequestScoreParallel scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<Vector<float>>>) spectrumID = 
         let fCharge = float chargeState
         // measured normailzed intensity array (spectrum) minus auto-correlation
         let ms_nis =  spectrumToIntensityArrayMinusAutoCorrelation scanlimits spectrum

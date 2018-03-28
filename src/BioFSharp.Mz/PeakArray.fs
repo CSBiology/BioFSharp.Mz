@@ -1,7 +1,6 @@
 ﻿namespace BioFSharp.Mz
 
-open MathNet.Numerics
-open MathNet.Numerics.LinearAlgebra.Double
+open FSharp.Stats
 
 type PeakArray<[<EqualityConditionalOn; ComparisonConditionalOn >]'a when 'a :> IPeak> = array<'a>
 
@@ -40,7 +39,7 @@ module PeakArray =
         let array = Array.zeroCreate (maxIndex-1)
         pkarr 
         |> Array.iter (fun p ->  
-            let index = int(round p.Mz) - minMassBoarder
+            let index = int(System.Math.Round p.Mz) - minMassBoarder
             if index < maxIndex-1 && index > -1 then
                 array.[index] <- max array.[index] p.Intensity)
         array
@@ -50,10 +49,10 @@ module PeakArray =
         let minMassBoarder = int minMassBoarder
         let maxMassBoarder = int maxMassBoarder
         let maxIndex = maxMassBoarder - minMassBoarder + 1        
-        let vector = LinearAlgebra.SparseVector.create (maxIndex-1) 0.
+        let vector = Vector.create (maxIndex-1) 0.
         pkarr 
         |> Array.iter (fun p ->  
-            let index = int(round p.Mz) - minMassBoarder
+            let index = int(System.Math.Round p.Mz) - minMassBoarder
             if index < maxIndex-1 && index > -1 then
                 vector.[index] <- max vector.[index] p.Intensity)
         vector

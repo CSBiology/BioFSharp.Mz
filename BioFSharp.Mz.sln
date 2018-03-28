@@ -44,6 +44,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharpAux.IO", "..\FSharpAu
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "BioFSharp.Mz", "src\BioFSharp.Mz\BioFSharp.Mz.fsproj", "{BE281046-E691-478A-A6D9-0A9EA3E948E7}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FSharp.Stats", "..\FSharp.Stats\src\FSharp.Stats\FSharp.Stats.fsproj", "{BD71FAB6-5E44-4B84-866D-2EF37C36934B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +72,10 @@ Global
 		{BE281046-E691-478A-A6D9-0A9EA3E948E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE281046-E691-478A-A6D9-0A9EA3E948E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE281046-E691-478A-A6D9-0A9EA3E948E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD71FAB6-5E44-4B84-866D-2EF37C36934B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD71FAB6-5E44-4B84-866D-2EF37C36934B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD71FAB6-5E44-4B84-866D-2EF37C36934B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD71FAB6-5E44-4B84-866D-2EF37C36934B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
