@@ -131,6 +131,11 @@ Target "Clean" (fun _ ->
     CleanDirs ["bin"; "temp"; "docs"]
 )
 
+
+Target "Restore" (fun _ ->
+        Fake.DotNetCli.Restore id
+    )
+
 // --------------------------------------------------------------------------------------
 // Build library & test project
 
@@ -348,6 +353,7 @@ Target "BuildPackage" DoNothing
 Target "All" DoNothing
 
 "AssemblyInfo"
+  ==> "Restore"
   ==> "Build"
   ==> "CopyBinaries"
   ==> "RunTests"
