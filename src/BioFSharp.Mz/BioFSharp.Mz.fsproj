@@ -20,13 +20,14 @@
     <Compile Include="AndromedaLike_old.fs" />
     <Compile Include="SearchEngineGeneric.fs" />
     <Compile Include="Quantification.fs" />
+    <Compile Include="ProteinInference.fs" />
     <Compile Include="PercolatorWrapper.fs" />
     <Compile Include="WorkflowLanguage.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="4.4.0" />
     <PackageReference Include="MathNet.Numerics.FSharp" Version="4.4.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.107" />
   </ItemGroup>
   <ItemGroup>
