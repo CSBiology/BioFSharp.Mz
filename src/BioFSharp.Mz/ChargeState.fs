@@ -177,7 +177,7 @@ module ChargeState =
     /// centered around the theoretical interPeakDistance. The standardDeviation is dependent on the used mass spectrometer
     let interPeakDistanceBy (stdDev: float)  (assignedCharge: float) = 
         let calcRndPosition assignedCharge stdDev =
-            1./assignedCharge + MathNet.Numerics.Distributions.Normal(0.,stdDev).Sample()  
+            1./assignedCharge + (FSharp.Stats.Distributions.Continuous.normal 0. stdDev).Sample()
         calcRndPosition assignedCharge stdDev
 
     /// Creates a random MzIntensityEntityCollection  
@@ -241,7 +241,7 @@ module ChargeState =
                             subSet.Peaks
                             |> Set.ofList
                         let interPeakDistances = mzDistancesOf subSet.Peaks 
-                        let meanInterPeakDistances = MathNet.Numerics.Statistics.Statistics.Mean interPeakDistances
+                        let meanInterPeakDistances = FSharp.Stats.List.mean interPeakDistances
                         let assignedCharge = getChargeBy chargeDeterminationParams meanInterPeakDistances
                         let theoInterPeakDistances = 1. / float assignedCharge
                         let distanceRealTheoPeakSpacing = 
@@ -260,7 +260,7 @@ module ChargeState =
         putativeChargeStates
         |> List.map (fun putativeChS -> putativeChS.DistanceRealTheoPeakSpacing )
         |> List.concat 
-        |> MathNet.Numerics.Statistics.Statistics.StandardDeviation
+        |> FSharp.Stats.Seq.stDev
 
     /// Returns a List of tested AssignedCharges. This Function eliminates all
     let removeSubSetsOfBestHit (assignedCharges: TestedItem<AssignedCharge> list) =
@@ -292,7 +292,7 @@ module ChargeState =
     
     ///
     let poissonProb lambda xValue =
-        ( ( lambda ** xValue) / MathNet.Numerics.SpecialFunctions.Factorial (int xValue) ) * exp(-lambda) 
+        ( ( lambda ** xValue) / FSharp.Stats.SpecialFunctions.Factorial.factorial (int xValue) ) * exp(-lambda) 
 
     ///
     let poissonEstofMassTrunc (massToLambda: float -> float) (limit:int) mass = 
