@@ -64,12 +64,17 @@ module Quantification =
         /// Returns the yValue of a exponentially modified gauss function at a given position.
         /// The function parameter tau represents the exponential relaxation time which is the inverse of the exponential decay parameter.
         let expModGaussFunc amplitude meanX std tau x = 
-            ((amplitude*std)/tau) * sqrt(System.Math.PI/2.) * exp(1./2. * ((std/tau)**2.) - ((x-meanX)/tau)) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((std/tau)-((x-meanX)/std)))
+            ((amplitude*std)/tau) * sqrt(System.Math.PI/2.) * exp(1./2. * ((std/tau)**2.) - ((x-meanX)/tau)) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc((1./sqrt(2.)) * ((std/tau)-((x-meanX)/std)))
 
         /// Estimates the Parameters of a Gaussian function
         /// Warning: This method is sensitive to noisy data. If the noise level of the input parameters is high, smoothing of 
         /// the data is strongly recommended. 
         let caruanaAlgorithm (mzData:float []) (intensityData:float []) =
+            let mzData,intensityData = 
+                Array.zip mzData intensityData
+                |> Array.filter (fun (_,intensity) -> intensity <> 0.)
+                |> Array.unzip
+                |> fun (x,y) -> Vector.ofArray x, y
             if mzData.Length < 3 || intensityData.Length < 3 then None 
             else 
             let logTransIntensityData = 
@@ -78,7 +83,8 @@ module Quantification =
                                 if x <= 0. then log 1. 
                                 else log x
                              )
-            let polCoeff = MathNet.Numerics.Fit.Polynomial(mzData,logTransIntensityData,2)
+                |> Vector.ofArray                          
+            let polCoeff = FSharp.Stats.Fitting.LinearRegression.OrdinaryLeastSquares.Polynomial.coefficient 2 mzData logTransIntensityData 
             // f(x) = a1 + a2 * x + a3 * x**2
             let a = polCoeff.[0]
             let b = polCoeff.[1]
@@ -368,20 +374,20 @@ module Quantification =
             let emgModel = {
                 DescFuncBody= "y =  ((amp*std)/tau) * sqrt(System.Math.PI/2.) * exp(1./2. * ((std/tau)**2.) - ((x-meanX)/tau)) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((std/tau)-((x-meanX)/std)))"
                 ParameterNames= [|"amp";"meanX";"std";"tau"|]
-                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue ->  ((parameterVector.[0]*parameterVector.[2])/parameterVector.[3]) * sqrt(System.Math.PI/2.) * exp(1./2. * ((parameterVector.[2]/parameterVector.[3])**2.) - ((xValue-parameterVector.[1])/parameterVector.[3])) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((parameterVector.[2]/parameterVector.[3])-((xValue-parameterVector.[1])/parameterVector.[2]))) )
+                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue ->  ((parameterVector.[0]*parameterVector.[2])/parameterVector.[3]) * sqrt(System.Math.PI/2.) * exp(1./2. * ((parameterVector.[2]/parameterVector.[3])**2.) - ((xValue-parameterVector.[1])/parameterVector.[3])) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc((1./sqrt(2.)) * ((parameterVector.[2]/parameterVector.[3])-((xValue-parameterVector.[1])/parameterVector.[2]))) )
                 GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
-                                    gradientVector.[0] <- (1./parameterVector.[3]) * 1.25331 * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )
+                                    gradientVector.[0] <- (1./parameterVector.[3]) * 1.25331 * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )
                                 //0 passt
-                                    gradientVector.[1] <-  ( (1./parameterVector.[3]**2.) *  1.25331 * parameterVector.[0] * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ) )  
+                                    gradientVector.[1] <-  ( (1./parameterVector.[3]**2.) *  1.25331 * parameterVector.[0] * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ) )  
                                                            - ( (1./parameterVector.[3]) * parameterVector.[0] * exp( ( (0.5 * parameterVector.[2]**2.) / parameterVector.[3]**2. ) - (0.5 * (((parameterVector.[2]/parameterVector.[3]) - ( (xValue-parameterVector.[1]) / parameterVector.[2] ) )**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3] ) ) )
                                 //1 passt
-                                    gradientVector.[2] <-     ( (1./ (parameterVector.[3]))                                 * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
-                                                            + ( (1./ (parameterVector.[3]**3.)) * (parameterVector.[2]**2.) * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ))
+                                    gradientVector.[2] <-     ( (1./ (parameterVector.[3]))                                 * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
+                                                            + ( (1./ (parameterVector.[3]**3.)) * (parameterVector.[2]**2.) * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ))
                                                             - ( (1./ (parameterVector.[3]))  )  * (parameterVector.[2])     * 1.00000 * parameterVector.[0] * exp( (-0.5*( (parameterVector.[2] / parameterVector.[3])  - ( (xValue-parameterVector.[1]) / parameterVector.[2]) )**2. ) - ((xValue-parameterVector.[1]) / parameterVector.[3]) + (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) ) * ( ((xValue-parameterVector.[1]) / (parameterVector.[2]**2.) ) + 1./parameterVector.[3] )    
                         
-                                    gradientVector.[3] <-  - ( (1./ (parameterVector.[3]**2.))  * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
+                                    gradientVector.[3] <-  - ( (1./ (parameterVector.[3]**2.))  * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
                                                
-                                                           + ( (1./ (parameterVector.[3]))      * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * MathNet.Numerics.SpecialFunctions.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
+                                                           + ( (1./ (parameterVector.[3]))      * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
                                                            * ( ((xValue-parameterVector.[1]) / parameterVector.[3]**2. ) - ((parameterVector.[2]**2.) / (parameterVector.[3]**3.)) )
                                                
                                                            + ( (1./ (parameterVector.[3]**3.))  )   * (parameterVector.[2]**2.)     * 1.00000 * parameterVector.[0] * exp( (-0.5*( (parameterVector.[2] / parameterVector.[3])  - ( (xValue-parameterVector.[1]) / parameterVector.[2])**2. ) ) - ((xValue-parameterVector.[1]) / parameterVector.[3]) + (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) ) 
@@ -478,7 +484,7 @@ module Quantification =
         let createGaussSolverOption = Fitting.createSolverOption 0.0001 0.0001 10000
 
         ///
-        let private findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
+        let findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
             let rec loopF (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (currentIdx: int) (kLiftOffs: int) (hasRightPeak:bool) = 
                 if currentIdx = labeledSndDevData.Length-1 then 
                     currentIdx, kLiftOffs, hasRightPeak
@@ -496,7 +502,7 @@ module Quantification =
                     // only one Liftoff and no flanking peak indicates a isolated peak and both models can be tested. 
                 if kLiftOffs = 1 && hasRightPeak = false then
                     FitBothModels.True, 
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x >= snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x            
                 // only one Liftoff indicates a convoluted peak, use only Gaussian model            
@@ -508,7 +514,7 @@ module Quantification =
                 // if more than one Liftoff between two peaks is detected, the peaks are well separated and both Models can be tested
                 elif kLiftOffs > 1 then 
                     FitBothModels.True,  
-                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x < snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
+                    match iterateTo (+1) xAndYData (closestRightLiftOffIdx.Value) (fun (x:float*float) -> snd x <= snd xAndYData.[closestRightLiftOffIdx.Value] || snd x > snd xAndYData.[closestRightLiftOffIdx.Value]) with 
                     | None -> xAndYData.Length-1
                     | Some x -> x        
                 else
@@ -593,7 +599,18 @@ module Quantification =
                         tmpGauss.[1] <- (gausParamEstCaruana.MeanX ) 
                         tmpGauss.[2] <- gausParamEstCaruana.STD 
                         tmpGauss
-         
+                    ///
+                    let gaussPrediction =
+                        let paramConti = new ResizeArray<vector>()
+                        let gaussSolOptions = createGaussSolverOption gausParamA
+                        try
+                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
+                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
+                            Some (gaussParamA, gaussYPredicted)
+                        with 
+                        | _ as ex  -> 
+                            None
+          
                     ///
                     let exponentialDecayEst = 
                         let startTime = xData.[closestRightLiftOffIdx.Value]
@@ -615,17 +632,6 @@ module Quantification =
                         tmpEmg.[2] <- gausParamEstCaruana.STD 
                         tmpEmg.[3] <- exponentialDecayEst
                         tmpEmg
-                    ///
-                    let gaussPrediction =
-                        let paramConti = new ResizeArray<Vector<float>>()
-                        let gaussSolOptions = createGaussSolverOption gausParamA
-                        try
-                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
-                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
-                            Some (gaussParamA, gaussYPredicted)
-                        with 
-                        | _ as ex  -> 
-                            None
  
                     ///
                     let emgPrediction =
@@ -747,7 +753,7 @@ module Quantification =
                             integralOfGaussian paramV
                         //
                         let deltaScanTimePeakApex = scanTime - gausParamEstCaruana.MeanX
-                        Some (createQuantificationResult FitBothModels.True paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
+                        Some (createQuantificationResult FitBothModels.False paramV modelF area sEoE deltaScanTimePeakApex (modelF.GetFunctionValue paramV gausParamEstCaruana.MeanX))
                     with 
                     | _ as ex -> 
                         None

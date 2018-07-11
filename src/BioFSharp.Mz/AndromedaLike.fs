@@ -8,7 +8,7 @@ open Fragmentation
 open TheoreticalSpectra
 open SearchEngineResult
 
-open MathNet.Numerics
+//open MathNet.Numerics
 
 module AndromedaLike =
     
@@ -230,8 +230,8 @@ module AndromedaLike =
 
     ///
     let lnProb n k lnp lnq = 
-        let s1 = -k * lnp - (n - k) * lnq - MathNet.Numerics.SpecialFunctions.GammaLn(n + 1.) 
-                    + MathNet.Numerics.SpecialFunctions.GammaLn(k + 1.) + MathNet.Numerics.SpecialFunctions.GammaLn(n - k + 1.) 
+        let s1 = -k * lnp - (n - k) * lnq - FSharp.Stats.SpecialFunctions.Gamma.gammaLn(n + 1.) 
+                    + FSharp.Stats.SpecialFunctions.Gamma.gammaLn(k + 1.) + FSharp.Stats.SpecialFunctions.Gamma.gammaLn(n - k + 1.) 
         s1 
     
     ///
@@ -284,10 +284,10 @@ module AndromedaLike =
         | 2 -> 17. 
         |_  -> 0.
 
-    let scoreTheoVsRecordedSpec (lowerScanLimit,upperScanLimit) (qMostAbundandPepsMin, qMostAbundandPepsMax)  matchingTolPPM  charge (lookUpResult:LookUpResult<'a>) theoSpec (ratedSpectrum: RatedPeak []) =     
+    let scoreTheoVsRecordedSpec (lowerScanLimit,upperScanLimit) (qMostAbundandPepsMin, qMostAbundandPepsMax)  matchingTolPPM  precursorMZ (*charge*) theoSpec (ratedSpectrum: RatedPeak []) =     
         countMatches (lowerScanLimit,upperScanLimit) (qMostAbundandPepsMin, qMostAbundandPepsMax) matchingTolPPM theoSpec ratedSpectrum
         |> Array.map (fun (q,(nWo,nWi,kWo,kWi)) -> 
-                        let massCorr = massCorrection lookUpResult.Mass //(Mass.toMZ lookUpResult.Mass charge)
+                        let massCorr = massCorrection precursorMZ //(Mass.toMZ lookUpResult.Mass charge)
                         let modCorr  = modCorrection 0
                         let cleavageCorr = cleavageCorrection 0 false
                         let rawScore1 = scoreFuncImpl (nWo) kWo q
@@ -380,14 +380,14 @@ module AndromedaLike =
                                 let theoSpec = 
                                     predictOf scanlimits fCharge ionSeries
                                 // Calculates score for real sequence
-                                let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec ratedSpec
+                                let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec ratedSpec
                                 let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
 
                                 // Calculates score for reversed decoy sequence
                                 let sequence_decoy = sequence |> List.rev
                                 let ionSeries_decoy = calcIonSeries massfunction sequence_decoy
                                 let theoSpecDecoy = predictOf scanlimits fCharge ionSeries_decoy
-                                let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpecDecoy ratedSpec
+                                let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpecDecoy ratedSpec
                                 let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc                        
                          ) []
@@ -417,11 +417,11 @@ module AndromedaLike =
  
                                 // Calculates score for target sequence
                                 let theoSpec = theoreticalSpectrum.TheoSpec
-                                let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec binnedRecSpec
+                                let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec binnedRecSpec
                                 let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
                                 
                                 let theoSpec_Decoy = theoreticalSpectrum.DecoyTheoSpec
-                                let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec_Decoy binnedRecSpec
+                                let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec_Decoy binnedRecSpec
                                 let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc     
                      ) []
@@ -446,11 +446,11 @@ module AndromedaLike =
 
             // Calculates score for target sequence
             let theoSpec = theoreticalSpectrum.TheoSpec
-            let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec binnedRecSpec
+            let targetScore = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec binnedRecSpec
             let targetResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScore.Score nan nan
             
             let theoSpec_Decoy = theoreticalSpectrum.DecoyTheoSpec
-            let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM fCharge lookUpResult theoSpec_Decoy binnedRecSpec
+            let decoyScore =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec_Decoy binnedRecSpec
             let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
             [targetResult;decoyResult]
         
