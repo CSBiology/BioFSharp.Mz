@@ -10,7 +10,7 @@ source https://nuget.org/api/v2
 
 nuget Newtonsoft.Json
 nuget System.Data.SQLite
-
+nuget FSharp.Core
 
 group Build
   source https://nuget.org/api/v2

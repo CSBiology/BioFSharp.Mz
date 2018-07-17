@@ -1,12 +1,13 @@
 ﻿namespace BioFSharp.Mz
 
 module Quantification =
-    
+
     open System
 
 
     open SignalDetection
     open FSharp.Stats
+    open Fitting.NonLinearRegression
 
     module Integration = 
 
@@ -95,313 +96,6 @@ module Quantification =
             let std   = toSTD fwhm
             Some (createGausParams amplitude meanX std fwhm)
 
-    module Fitting = 
-        open FSharp.Stats.Algebra
-
-        ///
-        let standardErrorOfPrediction dOF (model:float []) (data:float [])  =
-            let n = data.Length-1 |> float 
-            match n with
-            | x when x > dOF -> 
-                let sumOfResSq = Array.fold2 (fun acc yReal yPred  -> acc + ((yPred-yReal)**2.) ) 0.0  data model
-                sqrt( (sumOfResSq / (n - dOF)))
-            | _             -> -1.
-
-        ///
-        type Model = 
-            {
-            DescFuncBody    : string
-            ParameterNames  : string []
-            ///originally GetValue; contains function body
-            GetFunctionValue    : (Vector<float> -> float -> float)
-            ///Gradient: Vector of partial derivations of function body
-            GetGradientValue        : (Vector<float> -> Vector<float> -> float -> Vector<float> )
-            }
-        
-        ///
-        let createModel descFuncBody parameterNames getFunctionValue getGradientValue = {
-            DescFuncBody = descFuncBody; ParameterNames = parameterNames; GetFunctionValue = getFunctionValue; GetGradientValue=getGradientValue }
-
-        ///
-        type SolverOptions = {
-            MinimumDeltaValue: float
-            MinimumDeltaParameters: float
-            MaximumIterations: int
-            InitialParamGuess: float []
-            }
-
-        ///
-        let createSolverOption minimumDeltaValue minimumDeltaParameters maximumIterations initialParamGuess = {
-            MinimumDeltaValue = minimumDeltaValue; MinimumDeltaParameters = minimumDeltaParameters; MaximumIterations = maximumIterations; InitialParamGuess=initialParamGuess}
-
-        /// Returns the residual sum of squares (RSS) as a measure of discrepancy between the data and the used estimation model.
-        let getRSS (model: Model) (xData: float[]) (yData: float []) (paramVector: Vector<float>) =
-            let sumOfSquaredResiduals =
-                Array.fold2 (fun acc xValue yValue ->  
-                                let yValueEst = model.GetFunctionValue paramVector xValue
-                                acc + ((yValueEst - yValue) **2.)
-                            ) 0.0 xData yData
-        
-            sumOfSquaredResiduals
-
-        let getJacobianOf (model: Model) dataPointCount (xData: float[]) (paramVector: Vector<float>) (jacobian: Matrix<float> ) =
-            // Nr. of Parameters
-            let paramCount = paramVector.Length
-            // populate Jacobian Matrix
-            for i = 0 to dataPointCount-1 do 
-                let gradient = Vector.zero paramCount
-                model.GetGradientValue paramVector gradient xData.[i] |> ignore
-                Matrix.setRow jacobian i gradient            
-        /// Returns the residual vector, each row i contains the difference between the yEst_i and the yData_i. 
-        let getResidualVector (model: Model) dataPointCount (xData: float[]) (yData: float []) (paramVector: Vector<float>) (residualVector: Vector<float>) = 
-            for i = 0 to dataPointCount-1 do 
-                let yValueEst = model.GetFunctionValue paramVector xData.[i]
-                residualVector.[i] <- (yValueEst - yData.[i])
-
-        /// Returns true if convergence criteria are met or a user defined number of iiterations has been carried out
-        let shouldTerminate (currentValueRSS: float) (newValueRSS: float) (iterationCount:int) (currentParamGuess:Vector<float>) 
-                (newParamGuess:Vector<float>) (solverOptions: SolverOptions)  = 
-            if abs (newValueRSS-currentValueRSS) <= solverOptions.MinimumDeltaValue ||
-               Vector.sub newParamGuess currentParamGuess |> Vector.norm <= solverOptions.MinimumDeltaParameters ||
-               iterationCount >= solverOptions.MaximumIterations then
-                false
-            else 
-                true       
-
-        /// Returns a parameter vector as a possible solution for linear least square based nonlinear fitting of a given dataset (xData, yData) with a given 
-        /// model function. 
-        let gaussNewtonSolver (model: Model) (solverOptions: SolverOptions) (xData: float[]) (yData: float []) (paramsAtIteration: ResizeArray<_>)  = 
-
-            let mutable anotherIteration = true
-            /// Number of Parameters of modelFunction
-            let paramCount = solverOptions.InitialParamGuess.Length
-            let dataPointCount = xData.Length
-
-            let currentParamGuess = Vector.ofArray solverOptions.InitialParamGuess
-            let newParamGuess     = Vector.zero paramCount
-
-            let mutable currentValueRSS = 0.0
-            let mutable newValueRSS = 0.0
-            ///
-            currentValueRSS <- getRSS model xData yData currentParamGuess
-
-            while (anotherIteration = true) do 
-
-                let jacobian       = Matrix.create dataPointCount paramCount 0.
-                let residualVector = Vector.create dataPointCount 0.
-                /// 
-                getJacobianOf model dataPointCount xData currentParamGuess jacobian |> ignore
-            
-                ///
-                getResidualVector model dataPointCount xData yData currentParamGuess residualVector |> ignore  
-                /// 
-                let step = 
-                    Matrix.transpose jacobian
-                    |> Matrix.mul jacobian
-                    |> LinearAlgebra.Cholesky
-                    |> fun c ->                         
-                        Matrix.mulV (Matrix.transpose jacobian) residualVector
-                        |> LinearAlgebra.SolveLinearSystem c
-
-        
-                ///
-                let newParamGuess = Vector.sub currentParamGuess step
-
-                /// 
-                newValueRSS <- getRSS model xData yData newParamGuess
-
-                ///
-                paramsAtIteration.Add(newParamGuess) |> ignore
-        
-                /// 
-                anotherIteration <- shouldTerminate currentValueRSS newValueRSS paramsAtIteration.Count currentParamGuess newParamGuess solverOptions
-
-                /// 
-                for i = 0 to newParamGuess.Length do
-                    currentParamGuess.[i] <- newParamGuess.[i]
-
-                /// 
-                currentValueRSS <- newValueRSS
-
-            paramsAtIteration.[paramsAtIteration.Count-1]
-
-        /// Returns a parameter vector as a possible solution for linear least square based nonlinear fitting of a given dataset (xData, yData) with a given 
-        /// model function. 
-        let levenbergMarquardtSolver (model: Model) (solverOptions: SolverOptions) (xData: float[]) (yData: float []) (paramsAtIteration: ResizeArray<_>)  = 
-            
-            let lambdaInitial = 0.001
-            let lambdaFactor  = 10.0
-
-            let mutable anotherIteration = true
-            /// Number of Parameters of modelFunction
-            let paramCount = solverOptions.InitialParamGuess.Length
-            let dataPointCount = xData.Length
-
-            let mutable lambda = lambdaInitial
-
-            let currentParamGuess = Vector.ofArray solverOptions.InitialParamGuess
-            let newParamGuess     = Vector.zero paramCount
-            
-            let mutable currentValueRSS = 0.0
-            let mutable newValueRSS = 0.0
-            
-            ///
-            currentValueRSS <- getRSS model xData yData currentParamGuess
-
-            while (anotherIteration = true) do 
-
-                let jacobian       = Matrix.zero dataPointCount paramCount
-                let residualVector = Vector.zero dataPointCount
-                /// 
-                getJacobianOf model dataPointCount xData currentParamGuess jacobian 
-            
-                ///
-                getResidualVector model dataPointCount xData yData currentParamGuess residualVector 
-
-                /// 
-                let hessian  = Matrix.transpose jacobian |> fun x -> Matrix.mul x jacobian
-        
-                ///
-                let diagonal = Matrix.initDiagonal hessian.Diagonal
-                    //new DiagonalMatrix(paramCount, paramCount, hessian.Diagonal().ToArray() )
-
-                ///
-                let step     = 
-                    Matrix.scale lambda diagonal
-                    |> Matrix.add hessian 
-                    |> LinearAlgebra.Cholesky
-                    |> fun c ->                         
-                        Matrix.mulV (Matrix.transpose jacobian) residualVector
-                        |> LinearAlgebra.SolveLinearSystem c
-
-                ///
-                Vector.inplace_mapi (fun i _ -> currentParamGuess.[i] - step.[i]) newParamGuess
-
-                /// 
-                newValueRSS <- getRSS model xData yData newParamGuess
-
-                ///
-                paramsAtIteration.Add(newParamGuess)
-        
-                /// 
-                anotherIteration <- shouldTerminate currentValueRSS newValueRSS paramsAtIteration.Count currentParamGuess newParamGuess solverOptions
-
-                ///
-
-                if newValueRSS < currentValueRSS then
-                    /// 
-                    Vector.inplace_mapi (fun i _ -> newParamGuess.[i]) currentParamGuess
-                    
-
-                    /// 
-                    currentValueRSS <- newValueRSS
-
-                else
-                    lambda <- lambda * lambdaFactor
-
-            paramsAtIteration.[paramsAtIteration.Count-1]
-
-
-        module Table = 
-        
-        /////////////////////////
-        /// Line  
-
-            let lineModel = {
-                DescFuncBody= "y = a * x + b"
-                ParameterNames= [|"a";"b"|]
-                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> (parameterVector.[0] * xValue) + parameterVector.[1])
-                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
-                                    gradientVector.[0] <- xValue  
-                                    gradientVector.[1] <- 1.0 
-                                    gradientVector)
-                }
-
-
-            let lineSolverOptions = {
-                MinimumDeltaValue       = 0.00001
-                MinimumDeltaParameters  = 0.00001  
-                MaximumIterations       = 1000
-                InitialParamGuess       = [|0.14;1.|]
-                }
-                
-        /////////////////////////
-        /// Parabola
-
-            let parabolaModel = {
-                DescFuncBody= "y = a * x^2 + b * x + c"
-                ParameterNames= [|"a";"b";"c"|]
-                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> (parameterVector.[0] * xValue**2.) + parameterVector.[1] * xValue + parameterVector.[2])
-                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
-                                    gradientVector.[0] <- xValue**2.  
-                                    gradientVector.[1] <- xValue 
-                                    gradientVector.[2] <- 1.0
-                                    gradientVector)
-                }
-
-            let parabolaSolverOptions = {
-                MinimumDeltaValue       = 0.00001
-                MinimumDeltaParameters  = 0.00001  
-                MaximumIterations       = 1000
-                InitialParamGuess       = [|0.14;1.;10.|]
-                }
-
-        /////////////////////////
-        /// Gaussian function
-            let gaussModel = {
-                DescFuncBody= "y = amp * exp( -1. * ( ( ( (x-meanX)**2. ) / (2.*std**2.)) ) )"
-                ParameterNames= [|"amp";"meanX";"std"|]
-                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue -> parameterVector.[0] * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ))
-                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
-                                    gradientVector.[0] <- exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) )
-                                    gradientVector.[1] <- ( (parameterVector.[0] * (xValue-parameterVector.[1]) * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ) ) ) / (parameterVector.[2]**2.)
-                                    gradientVector.[2] <- ( (parameterVector.[0] * ((xValue-parameterVector.[1])**2.) * exp( (-1.) * ( ( ( (xValue-parameterVector.[1])**2. ) / (2.*parameterVector.[2]**2.)) ) ) ) ) / (parameterVector.[2]**3.)
-                                    gradientVector)
-                }
-
-            let gaussSolverOptions = {
-                MinimumDeltaValue       = 0.01
-                MinimumDeltaParameters  = 0.01  
-                MaximumIterations       = 10000
-                InitialParamGuess       = [|2.;12.;1.|]
-                }
-
-
-        
-        /////////////////////////
-        /// Exponentially modified Gaussian (EMG)
-
-            let emgModel = {
-                DescFuncBody= "y =  ((amp*std)/tau) * sqrt(System.Math.PI/2.) * exp(1./2. * ((std/tau)**2.) - ((x-meanX)/tau)) * MathNet.Numerics.SpecialFunctions.Erfc((1./sqrt(2.)) * ((std/tau)-((x-meanX)/std)))"
-                ParameterNames= [|"amp";"meanX";"std";"tau"|]
-                GetFunctionValue = (fun (parameterVector:Vector<float>) xValue ->  ((parameterVector.[0]*parameterVector.[2])/parameterVector.[3]) * sqrt(System.Math.PI/2.) * exp(1./2. * ((parameterVector.[2]/parameterVector.[3])**2.) - ((xValue-parameterVector.[1])/parameterVector.[3])) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc((1./sqrt(2.)) * ((parameterVector.[2]/parameterVector.[3])-((xValue-parameterVector.[1])/parameterVector.[2]))) )
-                GetGradientValue = (fun (parameterVector:Vector<float>) (gradientVector: Vector<float>) xValue -> 
-                                    gradientVector.[0] <- (1./parameterVector.[3]) * 1.25331 * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )
-                                //0 passt
-                                    gradientVector.[1] <-  ( (1./parameterVector.[3]**2.) *  1.25331 * parameterVector.[0] * parameterVector.[2] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ) )  
-                                                           - ( (1./parameterVector.[3]) * parameterVector.[0] * exp( ( (0.5 * parameterVector.[2]**2.) / parameterVector.[3]**2. ) - (0.5 * (((parameterVector.[2]/parameterVector.[3]) - ( (xValue-parameterVector.[1]) / parameterVector.[2] ) )**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3] ) ) )
-                                //1 passt
-                                    gradientVector.[2] <-     ( (1./ (parameterVector.[3]))                                 * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
-                                                            + ( (1./ (parameterVector.[3]**3.)) * (parameterVector.[2]**2.) * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) ))
-                                                            - ( (1./ (parameterVector.[3]))  )  * (parameterVector.[2])     * 1.00000 * parameterVector.[0] * exp( (-0.5*( (parameterVector.[2] / parameterVector.[3])  - ( (xValue-parameterVector.[1]) / parameterVector.[2]) )**2. ) - ((xValue-parameterVector.[1]) / parameterVector.[3]) + (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) ) * ( ((xValue-parameterVector.[1]) / (parameterVector.[2]**2.) ) + 1./parameterVector.[3] )    
-                        
-                                    gradientVector.[3] <-  - ( (1./ (parameterVector.[3]**2.))  * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
-                                               
-                                                           + ( (1./ (parameterVector.[3]))      * (parameterVector.[2])     * 1.25331 * parameterVector.[0] * exp( (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) - ( (xValue-parameterVector.[1]) / parameterVector.[3]) ) * FSharp.Stats.SpecialFunctions.Errorfunction.Erfc(0.707107 * ( (parameterVector.[2] / parameterVector.[3] ) - ( (xValue-parameterVector.[1]) / parameterVector.[2]) ) )) 
-                                                           * ( ((xValue-parameterVector.[1]) / parameterVector.[3]**2. ) - ((parameterVector.[2]**2.) / (parameterVector.[3]**3.)) )
-                                               
-                                                           + ( (1./ (parameterVector.[3]**3.))  )   * (parameterVector.[2]**2.)     * 1.00000 * parameterVector.[0] * exp( (-0.5*( (parameterVector.[2] / parameterVector.[3])  - ( (xValue-parameterVector.[1]) / parameterVector.[2])**2. ) ) - ((xValue-parameterVector.[1]) / parameterVector.[3]) + (0.5*(parameterVector.[2]**2.) / (parameterVector.[3]**2.) ) ) 
-                                    gradientVector ) 
-                }
-
-
-            let emgSolverOptions = {
-                MinimumDeltaValue       = 0.001
-                MinimumDeltaParameters  = 0.001  
-                MaximumIterations       = 10000
-                //[|"amp";"meanX";"std";"tau"|]
-                InitialParamGuess       = [|3.;9.;1.;0.3|]
-                }
     
         
     module MyQuant = 
@@ -459,7 +153,7 @@ module Quantification =
         type QuantificationResult = {
             FitBothModels               : FitBothModels
             EstimatedParameters         : Vector<float>
-            SelectedModel               : Fitting.Model
+            SelectedModel               : Model
             Area                        : float
             StandardErrorOfPrediction   : float
             //If negative: MS2 recorded prior to selected peak apex, if positive: MS2 recorded after selected peak
@@ -478,10 +172,10 @@ module Quantification =
             sqrt(2.) * coeffs.[0] * coeffs.[2] * sqrt(Math.PI)
 
         ///
-        let createEMGSolverOption = Fitting.createSolverOption 0.001 0.001 10000
+        let createEMGSolverOption = createSolverOption 0.001 0.001 10000
     
         ///
-        let createGaussSolverOption = Fitting.createSolverOption 0.0001 0.0001 10000
+        let createGaussSolverOption = createSolverOption 0.0001 0.0001 10000
 
         ///
         let findRightFittingIdx (xAndYData: (float*float) []) (labeledSndDevData: Tag<Care.Extrema,(float*float)> []) (closestPeakIdx: int) (closestRightLiftOffIdx: int option) =
@@ -601,11 +295,14 @@ module Quantification =
                         tmpGauss
                     ///
                     let gaussPrediction =
-                        let paramConti = new ResizeArray<vector>()
                         let gaussSolOptions = createGaussSolverOption gausParamA
                         try
-                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
-                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
+                            let gaussParamA = 
+                                    //    let lambdaInitial = 0.001
+        //    let lambdaFactor  = 10.0
+                                LevenbergMarquardt.estimatedParams Table.gaussModel gaussSolOptions 0.001 10.0 xDataForFit yDataForFit
+                            //FShapFitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti                                   
+                            let gaussYPredicted = Array.map (fun xValue -> Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
                             Some (gaussParamA, gaussYPredicted)
                         with 
                         | _ as ex  -> 
@@ -637,12 +334,13 @@ module Quantification =
                     let emgPrediction =
                         [|exponentialDecayEst*0.75 ..  exponentialDecayEst|]
                         |> Array.map (fun x -> 
-                                        let paramConti = new ResizeArray<Vector<float>>()
                                         gausParamEMG.[3] <- x
                                         let emgSolOptions = createEMGSolverOption gausParamEMG
                                         try 
-                                            let emgParamA = Fitting.levenbergMarquardtSolver Fitting.Table.emgModel emgSolOptions xDataForFit yDataForFit paramConti
-                                            let emgYPredicted = Array.map (fun xValue -> Fitting.Table.emgModel.GetFunctionValue emgParamA xValue) xDataForFit
+                                            let emgParamA = 
+                                                LevenbergMarquardt.estimatedParams Table.emgModel emgSolOptions 0.001 10.0 xDataForFit yDataForFit
+                                                //Fitting.levenbergMarquardtSolver Fitting.Table.emgModel emgSolOptions xDataForFit yDataForFit paramConti
+                                            let emgYPredicted = Array.map (fun xValue -> Table.emgModel.GetFunctionValue emgParamA xValue) xDataForFit
                                             Some (emgParamA, emgYPredicted)
                                         with 
                                         | _ as ex  -> 
@@ -655,7 +353,7 @@ module Quantification =
                             | _                      ->
                                 possibleEMGFits  
                                 |> Array.map (fun x ->
-                                                let sEoE = Fitting.standardErrorOfPrediction 4. (snd x.Value) yDataForFit  
+                                                let sEoE = standardErrorOfPrediction 4. (snd x.Value) yDataForFit  
                                                 x, sEoE
                                             )
                                 |> Array.minBy (fun x -> snd x)
@@ -665,22 +363,22 @@ module Quantification =
                     if gaussPrediction.IsSome && emgPrediction.IsSome then
                         ///
                         let yGauss = snd gaussPrediction.Value
-                        let sEoE_Gauss = Fitting.standardErrorOfPrediction 3. yGauss yDataForFit
+                        let sEoE_Gauss = standardErrorOfPrediction 3. yGauss yDataForFit
                         ///
                         let yEMG   = snd emgPrediction.Value
-                        let sEoE_EMG   = Fitting.standardErrorOfPrediction 4. yEMG yDataForFit 
+                        let sEoE_EMG   = standardErrorOfPrediction 4. yEMG yDataForFit 
                         if sEoE_Gauss > -1. && sEoE_EMG > -1. && sEoE_Gauss > sEoE_EMG then
-                            Some (Fitting.Table.emgModel, emgPrediction.Value, sEoE_EMG)
+                            Some (Table.emgModel, emgPrediction.Value, sEoE_EMG)
                         else        
-                            Some (Fitting.Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
+                            Some (Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
                     elif emgPrediction.IsSome then
                         let yEMG   = snd emgPrediction.Value
-                        let sEoE_EMG   = Fitting.standardErrorOfPrediction 4. yEMG yDataForFit      
-                        Some (Fitting.Table.emgModel , emgPrediction.Value, sEoE_EMG)
+                        let sEoE_EMG   = standardErrorOfPrediction 4. yEMG yDataForFit      
+                        Some (Table.emgModel , emgPrediction.Value, sEoE_EMG)
                     elif gaussPrediction.IsSome then
                         let yGauss = snd gaussPrediction.Value
-                        let sEoE_Gauss = Fitting.standardErrorOfPrediction 3. yGauss yDataForFit
-                        Some (Fitting.Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
+                        let sEoE_Gauss = standardErrorOfPrediction 3. yGauss yDataForFit
+                        Some (Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
                     else
                         None
                 // compute area beneath curve
@@ -724,12 +422,10 @@ module Quantification =
                         tmpGauss
                     ///
                     let gaussPrediction =
-                        let paramConti = new ResizeArray<Vector<float>>()
                         let gaussSolOptions = createGaussSolverOption gausParamA
                         try
-                            let gaussParamA = Fitting.levenbergMarquardtSolver Fitting.Table.gaussModel gaussSolOptions xDataForFit yDataForFit paramConti
-                                                    
-                            let gaussYPredicted = Array.map (fun xValue -> Fitting.Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
+                            let gaussParamA = LevenbergMarquardt.estimatedParams Table.gaussModel gaussSolOptions 0.001 10.0 xDataForFit yDataForFit                                                    
+                            let gaussYPredicted = Array.map (fun xValue -> Table.gaussModel.GetFunctionValue gaussParamA xValue) xDataForFit
                             Some (gaussParamA, gaussYPredicted)
                         with 
                         | :? System.ArgumentException as ex  -> 
@@ -737,8 +433,8 @@ module Quantification =
                        
                     if gaussPrediction.IsSome then
                         let yGauss = snd gaussPrediction.Value
-                        let sEoE_Gauss = Fitting.standardErrorOfPrediction 3. yGauss yDataForFit
-                        Some (Fitting.Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
+                        let sEoE_Gauss = standardErrorOfPrediction 3. yGauss yDataForFit
+                        Some (Table.gaussModel, gaussPrediction.Value, sEoE_Gauss)
                     else
                         None
                 // compute area beneath curve
