@@ -79,19 +79,15 @@ This type is inferred of the XMod ontology and the information stored in this ty
 <span class="l">22: </span>
 <span class="l">23: </span>
 <span class="l">24: </span>
-<span class="l">25: </span>
-<span class="l">26: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">open</span> <span class="id">BioFSharp</span>
-<span class="k">open</span> <span class="id">BioFSharp</span><span class="pn">.</span><span class="id">Mz</span>
-<span class="k">open</span> <span class="id">ModificationInfo</span>
-<span class="k">open</span> <span class="id">AminoAcids</span>
-<span class="k">open</span> <span class="id">SearchDB</span>
-
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs1', 1)" onmouseover="showTip(event, 'fs1', 1)" class="id">sdbParams</span> <span class="o">=</span> <span class="id">SearchDB</span><span class="pn">.</span><span class="id">getSDBParamsBy</span> <span class="s">@&quot;C:\Users\david\Documents\BioInfo\58_Markus\data\20170824 GE MRms0573001.db&quot;</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">open</span> <span onmouseout="hideTip(event, 'fs1', 1)" onmouseover="showTip(event, 'fs1', 1)" class="id">BioFSharp</span>
+<span class="k">open</span> <span onmouseout="hideTip(event, 'fs1', 2)" onmouseover="showTip(event, 'fs1', 2)" class="id">BioFSharp</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs2', 3)" onmouseover="showTip(event, 'fs2', 3)" class="id">Mz</span>
+<span class="k">open</span> <span onmouseout="hideTip(event, 'fs3', 4)" onmouseover="showTip(event, 'fs3', 4)" class="id">ModificationInfo</span>
+<span class="k">open</span> <span onmouseout="hideTip(event, 'fs4', 5)" onmouseover="showTip(event, 'fs4', 5)" class="id">AminoAcids</span>
+<span class="k">open</span> <span onmouseout="hideTip(event, 'fs5', 6)" onmouseover="showTip(event, 'fs5', 6)" class="id">SearchDB</span>
 
 <span class="c">/// Returns a instance of the type SearchModification</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs2', 2)" onmouseover="showTip(event, 'fs2', 2)" class="id">phosphorylation</span> <span class="o">=</span> <span class="pn">{</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs6', 7)" onmouseover="showTip(event, 'fs6', 7)" class="id">phosphorylation</span> <span class="o">=</span> <span class="pn">{</span>
     <span class="c">// Name of this SearchModification </span>
     <span class="id">Name</span><span class="o">=</span><span class="s">&quot;Phosphorylation&quot;</span> 
     <span class="c">// Xmod accession Number</span>
@@ -101,9 +97,9 @@ This type is inferred of the XMod ontology and the information stored in this ty
     <span class="c">// A string representation of the formula composition </span>
     <span class="id">Composition</span><span class="o">=</span> <span class="s">&quot;HO3P&quot;</span>
     <span class="c">// Specifices the ModLocation</span>
-    <span class="id">Site</span><span class="o">=</span> <span class="pn">[</span><span class="id">Specific</span><span class="pn">(</span><span class="id">Ser</span><span class="pn">,</span><span class="id">ModLocation</span><span class="pn">.</span><span class="id">Residual</span><span class="pn">)</span><span class="pn">;</span> <span class="id">Specific</span><span class="pn">(</span><span class="id">Thr</span><span class="pn">,</span><span class="id">ModLocation</span><span class="pn">.</span><span class="id">Residual</span><span class="pn">)</span><span class="pn">;</span> <span class="id">Specific</span><span class="pn">(</span><span class="id">Tyr</span><span class="pn">,</span><span class="id">ModLocation</span><span class="pn">.</span><span class="id">Residual</span><span class="pn">)</span><span class="pn">]</span>
+    <span class="id">Site</span><span class="o">=</span> <span class="pn">[</span><span onmouseout="hideTip(event, 'fs7', 8)" onmouseover="showTip(event, 'fs7', 8)" class="uc">Specific</span><span class="pn">(</span><span onmouseout="hideTip(event, 'fs8', 9)" onmouseover="showTip(event, 'fs8', 9)" class="uc">Ser</span><span class="pn">,</span><span onmouseout="hideTip(event, 'fs9', 10)" onmouseover="showTip(event, 'fs9', 10)" class="vt">ModLocation</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs10', 11)" onmouseover="showTip(event, 'fs10', 11)" class="id">Residual</span><span class="pn">)</span><span class="pn">;</span> <span onmouseout="hideTip(event, 'fs7', 12)" onmouseover="showTip(event, 'fs7', 12)" class="uc">Specific</span><span class="pn">(</span><span onmouseout="hideTip(event, 'fs11', 13)" onmouseover="showTip(event, 'fs11', 13)" class="uc">Thr</span><span class="pn">,</span><span onmouseout="hideTip(event, 'fs9', 14)" onmouseover="showTip(event, 'fs9', 14)" class="vt">ModLocation</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs10', 15)" onmouseover="showTip(event, 'fs10', 15)" class="id">Residual</span><span class="pn">)</span><span class="pn">;</span> <span onmouseout="hideTip(event, 'fs7', 16)" onmouseover="showTip(event, 'fs7', 16)" class="uc">Specific</span><span class="pn">(</span><span onmouseout="hideTip(event, 'fs12', 17)" onmouseover="showTip(event, 'fs12', 17)" class="uc">Tyr</span><span class="pn">,</span><span onmouseout="hideTip(event, 'fs9', 18)" onmouseover="showTip(event, 'fs9', 18)" class="vt">ModLocation</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs10', 19)" onmouseover="showTip(event, 'fs10', 19)" class="id">Residual</span><span class="pn">)</span><span class="pn">]</span>
     <span class="c">// Specifies if the Modification is additive or subtractive</span>
-    <span class="id">MType</span><span class="o">=</span><span class="id">SearchModType</span><span class="pn">.</span><span class="id">Plus</span>
+    <span class="id">MType</span><span class="o">=</span><span onmouseout="hideTip(event, 'fs13', 20)" onmouseover="showTip(event, 'fs13', 20)" class="rt">SearchModType</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs14', 21)" onmouseover="showTip(event, 'fs14', 21)" class="id">Plus</span>
     <span class="c">// If a modified AminoAcid is shown via string representation this code is placed before</span>
     <span class="c">// the AminoAcid Symbol e.g. &quot;phS&quot;</span>
     <span class="id">XModCode</span><span class="o">=</span> <span class="s">&quot;ph&quot;</span>
@@ -120,7 +116,7 @@ plans to introduce a IsotopicModifications e.g a replacement of the N14 isotopes
 <span class="l">2: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns a instance of the type SearchInfoIsotopic </span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs3', 3)" onmouseover="showTip(event, 'fs3', 3)" class="id">isoMod</span> <span class="o">=</span> <span class="pn">(</span><span class="id">SearchDB</span><span class="pn">.</span><span class="id">createSearchInfoIsotopic</span> <span class="s">&quot;N15&quot;</span> <span class="id">Elements</span><span class="pn">.</span><span class="id">Table</span><span class="pn">.</span><span class="id">N</span> <span class="id">Elements</span><span class="pn">.</span><span class="id">Table</span><span class="pn">.</span><span class="id">Heavy</span><span class="pn">.</span><span class="id">N15</span><span class="pn">)</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs15', 22)" onmouseover="showTip(event, 'fs15', 22)" class="id">isoMod</span> <span class="o">=</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs5', 23)" onmouseover="showTip(event, 'fs5', 23)" class="m">SearchDB</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs16', 24)" onmouseover="showTip(event, 'fs16', 24)" class="id">createSearchInfoIsotopic</span> <span class="s">&quot;N15&quot;</span> <span onmouseout="hideTip(event, 'fs17', 25)" onmouseover="showTip(event, 'fs17', 25)" class="m">Elements</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs18', 26)" onmouseover="showTip(event, 'fs18', 26)" class="m">Table</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs19', 27)" onmouseover="showTip(event, 'fs19', 27)" class="id">N</span> <span onmouseout="hideTip(event, 'fs17', 28)" onmouseover="showTip(event, 'fs17', 28)" class="m">Elements</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs18', 29)" onmouseover="showTip(event, 'fs18', 29)" class="m">Table</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 30)" onmouseover="showTip(event, 'fs20', 30)" class="m">Heavy</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs21', 31)" onmouseover="showTip(event, 'fs21', 31)" class="id">N15</span><span class="pn">)</span>
 </code></pre></td>
 </tr>
 </table>
@@ -135,7 +131,7 @@ creation.</p>
 <span class="l">2: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">///Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs4', 4)" onmouseover="showTip(event, 'fs4', 4)" class="fn">massF</span> <span class="pn">:</span> <span class="pn">(</span><span class="id">IBioItem</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs5', 5)" onmouseover="showTip(event, 'fs5', 5)" class="vt">float</span><span class="pn">)</span> <span class="o">=</span>  <span class="id">BioItem</span><span class="pn">.</span><span class="id">initMonoisoMassWithMemP</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 32)" onmouseover="showTip(event, 'fs22', 32)" class="fn">massF</span> <span class="pn">:</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs23', 33)" onmouseover="showTip(event, 'fs23', 33)" class="if">IBioItem</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs24', 34)" onmouseover="showTip(event, 'fs24', 34)" class="vt">float</span><span class="pn">)</span> <span class="o">=</span>  <span onmouseout="hideTip(event, 'fs25', 35)" onmouseover="showTip(event, 'fs25', 35)" class="m">BioItem</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs26', 36)" onmouseover="showTip(event, 'fs26', 36)" class="id">initMonoisoMassWithMemP</span>
 </code></pre></td>
 </tr>
 </table>
@@ -177,16 +173,16 @@ creation.</p>
 <span class="l">34: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns a instance of the type SearchDbParams</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs6', 6)" onmouseover="showTip(event, 'fs6', 6)" class="id">paramTestN15</span> <span class="o">=</span> <span class="pn">{</span>
-        <span class="id">Name</span><span class="o">=</span><span class="s">&quot;Creinhardtii_full&quot;</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs27', 37)" onmouseover="showTip(event, 'fs27', 37)" class="id">paramTestN15</span> <span class="o">=</span> <span class="pn">{</span>
+        <span class="id">Name</span><span class="o">=</span><span class="s">&quot;Creinhardtii_fullN15&quot;</span>
         <span class="c">// Path of db storage folder</span>
         <span class="id">DbFolder</span>            <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/&quot;</span><span class="pn">)</span>
         <span class="c">// Path of the user selected fasta file  </span>
-        <span class="id">FastaPath</span>           <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/Creinhardtii_281_v5.5.protein.fasta&quot;</span><span class="pn">)</span>
+        <span class="id">FastaPath</span>           <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/Chlamy_JGI5_5(Cp_Mp)_truncated.fasta&quot;</span><span class="pn">)</span>
         <span class="c">// Function that specifies the conversion of the Fasta Header to the protein name inserted in the database</span>
-        <span class="id">FastaHeaderToName</span>   <span class="o">=</span> <span onmouseout="hideTip(event, 'fs7', 7)" onmouseover="showTip(event, 'fs7', 7)" class="id">id</span>
+        <span class="fn">FastaHeaderToName</span>   <span class="o">=</span> <span onmouseout="hideTip(event, 'fs28', 38)" onmouseover="showTip(event, 'fs28', 38)" class="fn">id</span>
         <span class="c">// Protease that is used during in silico digestion of the proteins</span>
-        <span class="id">Protease</span>            <span class="o">=</span> <span class="id">Digestion</span><span class="pn">.</span><span class="id">Table</span><span class="pn">.</span><span class="id">getProteaseBy</span> <span class="s">&quot;Trypsin&quot;</span>
+        <span class="id">Protease</span>            <span class="o">=</span> <span onmouseout="hideTip(event, 'fs29', 39)" onmouseover="showTip(event, 'fs29', 39)" class="m">Digestion</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs30', 40)" onmouseover="showTip(event, 'fs30', 40)" class="m">Table</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs31', 41)" onmouseover="showTip(event, 'fs31', 41)" class="id">getProteaseBy</span> <span class="s">&quot;Trypsin&quot;</span>
         <span class="c">// Minimum number of missed cleavages</span>
         <span class="id">MinMissedCleavages</span>  <span class="o">=</span> <span class="n">0</span>
         <span class="c">// Maximum number of missed cleavages</span>
@@ -198,11 +194,11 @@ creation.</p>
         <span class="c">// Maximum pepide length</span>
         <span class="id">MaxPepLength</span>        <span class="o">=</span> <span class="n">65</span>
         <span class="c">// Contains a instance of SearchInfoIsotopic, set to None if no isotopic modification shall be introduced</span>
-        <span class="id">IsotopicMod</span>           <span class="o">=</span> <span class="pn">[</span><span onmouseout="hideTip(event, 'fs3', 8)" onmouseover="showTip(event, 'fs3', 8)" class="id">isoMod</span><span class="pn">]</span> 
+        <span class="id">IsotopicMod</span>           <span class="o">=</span> <span class="pn">[</span><span onmouseout="hideTip(event, 'fs15', 42)" onmouseover="showTip(event, 'fs15', 42)" class="id">isoMod</span><span class="pn">]</span> 
         <span class="c">// MassMode used during db creation</span>
-        <span class="id">MassMode</span>            <span class="o">=</span> <span class="id">SearchDB</span><span class="pn">.</span><span class="id">MassMode</span><span class="pn">.</span><span class="id">Monoisotopic</span>
+        <span onmouseout="hideTip(event, 'fs32', 43)" onmouseover="showTip(event, 'fs32', 43)" class="id">MassMode</span>            <span class="o">=</span> <span onmouseout="hideTip(event, 'fs5', 44)" onmouseover="showTip(event, 'fs5', 44)" class="m">SearchDB</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs32', 45)" onmouseover="showTip(event, 'fs32', 45)" class="rt">MassMode</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs33', 46)" onmouseover="showTip(event, 'fs33', 46)" class="id">Monoisotopic</span>
         <span class="c">// Massfunction used during db creation</span>
-        <span class="id">MassFunction</span>        <span class="o">=</span> <span onmouseout="hideTip(event, 'fs4', 9)" onmouseover="showTip(event, 'fs4', 9)" class="id">massF</span>
+        <span class="fn">MassFunction</span>        <span class="o">=</span> <span onmouseout="hideTip(event, 'fs22', 47)" onmouseover="showTip(event, 'fs22', 47)" class="fn">massF</span>
         <span class="c">// List of &quot;Fixedmodifications&quot;. </span>
         <span class="id">FixedMods</span>           <span class="o">=</span> <span class="pn">[</span><span class="pn">]</span>
         <span class="c">// List of &quot;VariableModificaions&quot;.  </span>
@@ -227,8 +223,8 @@ parameters such as the size of the FASTA file, the number of given Modifications
 <span class="l">4: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs8', 10)" onmouseover="showTip(event, 'fs8', 10)" class="fn">n15DBLookUpBy</span> <span class="o">=</span>  
-        <span class="id">SearchDB</span><span class="pn">.</span><span class="id">getPeptideLookUpBy</span> <span onmouseout="hideTip(event, 'fs6', 11)" onmouseover="showTip(event, 'fs6', 11)" class="id">paramTestN15</span>   
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs34', 48)" onmouseover="showTip(event, 'fs34', 48)" class="fn">n15DBLookUpBy</span> <span class="o">=</span>  
+        <span onmouseout="hideTip(event, 'fs5', 49)" onmouseover="showTip(event, 'fs5', 49)" class="m">SearchDB</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs35', 50)" onmouseover="showTip(event, 'fs35', 50)" class="id">getPeptideLookUpBy</span> <span onmouseout="hideTip(event, 'fs27', 51)" onmouseover="showTip(event, 'fs27', 51)" class="id">paramTestN15</span>   
          
 </code></pre></td>
 </tr>
@@ -241,244 +237,30 @@ input to return a LookUpResult list.</p>
 <span class="l">4: </span>
 <span class="l">5: </span>
 <span class="l">6: </span>
-<span class="l">7: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range </span>
 <span class="c">/// of the inputMass-0.5 to inputMass+0.5 </span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs9', 12)" onmouseover="showTip(event, 'fs9', 12)" class="fn">n15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs10', 13)" onmouseover="showTip(event, 'fs10', 13)" class="id">inputMass</span> <span class="o">=</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs11', 14)" onmouseover="showTip(event, 'fs11', 14)" class="id">lowerBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 15)" onmouseover="showTip(event, 'fs10', 15)" class="id">inputMass</span><span class="o">-</span><span class="n">0.5</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs12', 16)" onmouseover="showTip(event, 'fs12', 16)" class="id">upperBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 17)" onmouseover="showTip(event, 'fs10', 17)" class="id">inputMass</span><span class="o">+</span><span class="n">0.5</span> 
-        <span onmouseout="hideTip(event, 'fs8', 18)" onmouseover="showTip(event, 'fs8', 18)" class="fn">n15DBLookUpBy</span> <span onmouseout="hideTip(event, 'fs11', 19)" onmouseover="showTip(event, 'fs11', 19)" class="id">lowerBorder</span> <span onmouseout="hideTip(event, 'fs12', 20)" onmouseover="showTip(event, 'fs12', 20)" class="id">upperBorder</span>
-<span class="id">Mass</span><span class="pn">.</span><span class="id">rangePpm</span> <span class="n">20.</span> <span class="n">496.23395536185</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs36', 52)" onmouseover="showTip(event, 'fs36', 52)" class="fn">n15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs37', 53)" onmouseover="showTip(event, 'fs37', 53)" class="id">inputMass</span> <span class="o">=</span>
+        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs38', 54)" onmouseover="showTip(event, 'fs38', 54)" class="id">lowerBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs37', 55)" onmouseover="showTip(event, 'fs37', 55)" class="id">inputMass</span><span class="o">-</span><span class="n">0.5</span>
+        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs39', 56)" onmouseover="showTip(event, 'fs39', 56)" class="id">upperBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs37', 57)" onmouseover="showTip(event, 'fs37', 57)" class="id">inputMass</span><span class="o">+</span><span class="n">0.5</span> 
+        <span onmouseout="hideTip(event, 'fs34', 58)" onmouseover="showTip(event, 'fs34', 58)" class="fn">n15DBLookUpBy</span> <span onmouseout="hideTip(event, 'fs38', 59)" onmouseover="showTip(event, 'fs38', 59)" class="id">lowerBorder</span> <span onmouseout="hideTip(event, 'fs39', 60)" onmouseover="showTip(event, 'fs39', 60)" class="id">upperBorder</span>
 </code></pre></td>
 </tr>
 </table>
 <p>This function can be used as shown in the code snippet below. As a inputMass the monoisotopic mass of the peptide <em>ANLGMEVMHER</em> can be used as a input.
 This peptide is encoded by a protein which can be found in the FASTA used for the database creation. Surprisingly the list you obtain will be empty because
 the database does not contain any peptides in the given massRange.</p>
-<table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">  1: </span>
-<span class="l">  2: </span>
-<span class="l">  3: </span>
-<span class="l">  4: </span>
-<span class="l">  5: </span>
-<span class="l">  6: </span>
-<span class="l">  7: </span>
-<span class="l">  8: </span>
-<span class="l">  9: </span>
-<span class="l"> 10: </span>
-<span class="l"> 11: </span>
-<span class="l"> 12: </span>
-<span class="l"> 13: </span>
-<span class="l"> 14: </span>
-<span class="l"> 15: </span>
-<span class="l"> 16: </span>
-<span class="l"> 17: </span>
-<span class="l"> 18: </span>
-<span class="l"> 19: </span>
-<span class="l"> 20: </span>
-<span class="l"> 21: </span>
-<span class="l"> 22: </span>
-<span class="l"> 23: </span>
-<span class="l"> 24: </span>
-<span class="l"> 25: </span>
-<span class="l"> 26: </span>
-<span class="l"> 27: </span>
-<span class="l"> 28: </span>
-<span class="l"> 29: </span>
-<span class="l"> 30: </span>
-<span class="l"> 31: </span>
-<span class="l"> 32: </span>
-<span class="l"> 33: </span>
-<span class="l"> 34: </span>
-<span class="l"> 35: </span>
-<span class="l"> 36: </span>
-<span class="l"> 37: </span>
-<span class="l"> 38: </span>
-<span class="l"> 39: </span>
-<span class="l"> 40: </span>
-<span class="l"> 41: </span>
-<span class="l"> 42: </span>
-<span class="l"> 43: </span>
-<span class="l"> 44: </span>
-<span class="l"> 45: </span>
-<span class="l"> 46: </span>
-<span class="l"> 47: </span>
-<span class="l"> 48: </span>
-<span class="l"> 49: </span>
-<span class="l"> 50: </span>
-<span class="l"> 51: </span>
-<span class="l"> 52: </span>
-<span class="l"> 53: </span>
-<span class="l"> 54: </span>
-<span class="l"> 55: </span>
-<span class="l"> 56: </span>
-<span class="l"> 57: </span>
-<span class="l"> 58: </span>
-<span class="l"> 59: </span>
-<span class="l"> 60: </span>
-<span class="l"> 61: </span>
-<span class="l"> 62: </span>
-<span class="l"> 63: </span>
-<span class="l"> 64: </span>
-<span class="l"> 65: </span>
-<span class="l"> 66: </span>
-<span class="l"> 67: </span>
-<span class="l"> 68: </span>
-<span class="l"> 69: </span>
-<span class="l"> 70: </span>
-<span class="l"> 71: </span>
-<span class="l"> 72: </span>
-<span class="l"> 73: </span>
-<span class="l"> 74: </span>
-<span class="l"> 75: </span>
-<span class="l"> 76: </span>
-<span class="l"> 77: </span>
-<span class="l"> 78: </span>
-<span class="l"> 79: </span>
-<span class="l"> 80: </span>
-<span class="l"> 81: </span>
-<span class="l"> 82: </span>
-<span class="l"> 83: </span>
-<span class="l"> 84: </span>
-<span class="l"> 85: </span>
-<span class="l"> 86: </span>
-<span class="l"> 87: </span>
-<span class="l"> 88: </span>
-<span class="l"> 89: </span>
-<span class="l"> 90: </span>
-<span class="l"> 91: </span>
-<span class="l"> 92: </span>
-<span class="l"> 93: </span>
-<span class="l"> 94: </span>
-<span class="l"> 95: </span>
-<span class="l"> 96: </span>
-<span class="l"> 97: </span>
-<span class="l"> 98: </span>
-<span class="l"> 99: </span>
-<span class="l">100: </span>
-<span class="l">101: </span>
-<span class="l">102: </span>
-<span class="l">103: </span>
-<span class="l">104: </span>
-<span class="l">105: </span>
-<span class="l">106: </span>
-<span class="l">107: </span>
-<span class="l">108: </span>
-<span class="l">109: </span>
-<span class="l">110: </span>
-<span class="l">111: </span>
+<table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
+<span class="l">2: </span>
+<span class="l">3: </span>
+<span class="l">4: </span>
+<span class="l">5: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// PeptideMass of the peptide known from the peptide *ANLGMEVMHER*. </span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs13', 21)" onmouseover="showTip(event, 'fs13', 21)" class="id">peptideMass</span> <span class="o">=</span> <span class="n">838.</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs14', 22)" onmouseover="showTip(event, 'fs14', 22)" class="id">i</span> <span class="o">=</span> <span class="pn">[</span><span class="n">830.</span> <span class="o">..</span> <span class="n">0.001</span> <span class="o">..</span> <span class="n">832.</span><span class="pn">]</span> 
-<span onmouseout="hideTip(event, 'fs14', 23)" onmouseover="showTip(event, 'fs14', 23)" class="id">i</span><span class="pn">.</span><span class="pn">[</span><span onmouseout="hideTip(event, 'fs14', 24)" onmouseover="showTip(event, 'fs14', 24)" class="id">i</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 25)" onmouseover="showTip(event, 'fs15', 25)" class="id">Length</span><span class="o">-</span><span class="n">1</span><span class="pn">]</span>
-<span onmouseout="hideTip(event, 'fs14', 26)" onmouseover="showTip(event, 'fs14', 26)" class="id">i</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 27)" onmouseover="showTip(event, 'fs15', 27)" class="id">Length</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs40', 61)" onmouseover="showTip(event, 'fs40', 61)" class="id">peptideMass</span> <span class="o">=</span> <span class="n">1285.590726</span>
+
+<span onmouseout="hideTip(event, 'fs36', 62)" onmouseover="showTip(event, 'fs36', 62)" class="fn">n15LookUpPeptideBy</span> <span class="n">1000.</span>
 <span class="pp">#time</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs16', 28)" onmouseover="showTip(event, 'fs16', 28)" class="id">res</span> <span class="o">=</span> 
-    <span class="pn">[</span>
-    <span class="k">for</span> <span onmouseout="hideTip(event, 'fs17', 29)" onmouseover="showTip(event, 'fs17', 29)" class="id">x</span> <span class="k">in</span> <span onmouseout="hideTip(event, 'fs14', 30)" onmouseover="showTip(event, 'fs14', 30)" class="id">i</span> <span class="k">do</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs18', 31)" onmouseover="showTip(event, 'fs18', 31)" class="id">n15LookUpResult</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 32)" onmouseover="showTip(event, 'fs9', 32)" class="fn">n15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs17', 33)" onmouseover="showTip(event, 'fs17', 33)" class="id">x</span>
-        <span class="k">yield</span> <span onmouseout="hideTip(event, 'fs18', 34)" onmouseover="showTip(event, 'fs18', 34)" class="id">n15LookUpResult</span> 
-    <span class="pn">]</span>
-<span onmouseout="hideTip(event, 'fs16', 35)" onmouseover="showTip(event, 'fs16', 35)" class="id">res</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 36)" onmouseover="showTip(event, 'fs19', 36)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 37)" onmouseover="showTip(event, 'fs20', 37)" class="id">map</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs21', 38)" onmouseover="showTip(event, 'fs21', 38)" class="id">x</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs21', 39)" onmouseover="showTip(event, 'fs21', 39)" class="id">x</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 40)" onmouseover="showTip(event, 'fs15', 40)" class="id">Length</span><span class="pn">)</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs18', 41)" onmouseover="showTip(event, 'fs18', 41)" class="id">n15LookUpResult</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 42)" onmouseover="showTip(event, 'fs9', 42)" class="fn">n15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs13', 43)" onmouseover="showTip(event, 'fs13', 43)" class="id">peptideMass</span> 
-<span class="c">/// Returns the result of the peptide lookup </span>
-<span class="pp">#time</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 44)" onmouseover="showTip(event, 'fs22', 44)" class="id">cachi2</span> <span class="o">=</span> <span class="id">Cache</span><span class="pn">.</span><span class="id">createCache</span><span class="pn">&lt;</span><span onmouseout="hideTip(event, 'fs23', 45)" onmouseover="showTip(event, 'fs23', 45)" class="id">int64</span><span class="pn">,</span> <span class="id">LookUpResult</span><span class="pn">&lt;</span><span class="id">AminoAcid</span><span class="pn">&gt;</span> <span onmouseout="hideTip(event, 'fs24', 46)" onmouseover="showTip(event, 'fs24', 46)" class="id">list</span><span class="pn">&gt;</span> 
-
-        
-<span class="c">//cachi.Count</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs25', 47)" onmouseover="showTip(event, 'fs25', 47)" class="fn">cachedLook</span> <span class="o">=</span> <span class="id">SearchDB</span><span class="pn">.</span><span class="id">getPeptideLookUpWithMemBy</span> <span onmouseout="hideTip(event, 'fs8', 48)" onmouseover="showTip(event, 'fs8', 48)" class="id">n15DBLookUpBy</span> <span onmouseout="hideTip(event, 'fs22', 49)" onmouseover="showTip(event, 'fs22', 49)" class="id">cachi2</span> 
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs26', 50)" onmouseover="showTip(event, 'fs26', 50)" class="fn">cachedn15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs10', 51)" onmouseover="showTip(event, 'fs10', 51)" class="id">inputMass</span> <span class="o">=</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs11', 52)" onmouseover="showTip(event, 'fs11', 52)" class="id">lowerBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 53)" onmouseover="showTip(event, 'fs10', 53)" class="id">inputMass</span><span class="o">-</span><span class="n">0.5</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs12', 54)" onmouseover="showTip(event, 'fs12', 54)" class="id">upperBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 55)" onmouseover="showTip(event, 'fs10', 55)" class="id">inputMass</span><span class="o">+</span><span class="n">0.5</span> 
-        <span onmouseout="hideTip(event, 'fs25', 56)" onmouseover="showTip(event, 'fs25', 56)" class="fn">cachedLook</span> <span onmouseout="hideTip(event, 'fs11', 57)" onmouseover="showTip(event, 'fs11', 57)" class="id">lowerBorder</span> <span onmouseout="hideTip(event, 'fs12', 58)" onmouseover="showTip(event, 'fs12', 58)" class="id">upperBorder</span>
-<span class="pp">#time</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs27', 59)" onmouseover="showTip(event, 'fs27', 59)" class="id">n15LookUpResult2</span> <span class="o">=</span>  
-    <span onmouseout="hideTip(event, 'fs26', 60)" onmouseover="showTip(event, 'fs26', 60)" class="fn">cachedn15LookUpPeptideBy</span> <span class="n">830.001</span>
-
-<span onmouseout="hideTip(event, 'fs27', 61)" onmouseover="showTip(event, 'fs27', 61)" class="id">n15LookUpResult2</span> <span class="pn">.</span><span class="id">Length</span>
-
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs28', 62)" onmouseover="showTip(event, 'fs28', 62)" class="id">cachedRes</span> <span class="o">=</span> 
-    <span class="pn">[</span>
-    <span class="k">for</span> <span onmouseout="hideTip(event, 'fs17', 63)" onmouseover="showTip(event, 'fs17', 63)" class="id">x</span> <span class="k">in</span> <span onmouseout="hideTip(event, 'fs14', 64)" onmouseover="showTip(event, 'fs14', 64)" class="id">i</span> <span class="k">do</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs27', 65)" onmouseover="showTip(event, 'fs27', 65)" class="id">n15LookUpResult2</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs26', 66)" onmouseover="showTip(event, 'fs26', 66)" class="fn">cachedn15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs17', 67)" onmouseover="showTip(event, 'fs17', 67)" class="id">x</span>
-        <span class="k">yield</span> <span onmouseout="hideTip(event, 'fs27', 68)" onmouseover="showTip(event, 'fs27', 68)" class="id">n15LookUpResult2</span>
-    <span class="pn">]</span>
-
-
-<span onmouseout="hideTip(event, 'fs28', 69)" onmouseover="showTip(event, 'fs28', 69)" class="id">cachedRes</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 70)" onmouseover="showTip(event, 'fs19', 70)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 71)" onmouseover="showTip(event, 'fs20', 71)" class="id">map</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs21', 72)" onmouseover="showTip(event, 'fs21', 72)" class="id">x</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs21', 73)" onmouseover="showTip(event, 'fs21', 73)" class="id">x</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 74)" onmouseover="showTip(event, 'fs15', 74)" class="id">Length</span><span class="pn">)</span>
-<span onmouseout="hideTip(event, 'fs22', 75)" onmouseover="showTip(event, 'fs22', 75)" class="id">cachi2</span><span class="pn">.</span><span class="id">Values</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs29', 76)" onmouseover="showTip(event, 'fs29', 76)" class="m">Seq</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs30', 77)" onmouseover="showTip(event, 'fs30', 77)" class="id">concat</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs29', 78)" onmouseover="showTip(event, 'fs29', 78)" class="m">Seq</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs31', 79)" onmouseover="showTip(event, 'fs31', 79)" class="id">length</span>
-
-<span onmouseout="hideTip(event, 'fs19', 80)" onmouseover="showTip(event, 'fs19', 80)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs32', 81)" onmouseover="showTip(event, 'fs32', 81)" class="id">map2</span> <span class="pn">(</span><span class="k">fun</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs21', 82)" onmouseover="showTip(event, 'fs21', 82)" class="id">x</span><span class="pn">:</span> <span class="ta">&#39;</span><span class="id">a</span> <span onmouseout="hideTip(event, 'fs24', 83)" onmouseover="showTip(event, 'fs24', 83)" class="rt">list</span><span class="pn">)</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs33', 84)" onmouseover="showTip(event, 'fs33', 84)" class="id">y</span><span class="pn">:</span> <span class="ta">&#39;</span><span class="id">a</span> <span onmouseout="hideTip(event, 'fs24', 85)" onmouseover="showTip(event, 'fs24', 85)" class="rt">list</span><span class="pn">)</span> <span class="k">-&gt;</span> 
-                <span onmouseout="hideTip(event, 'fs21', 86)" onmouseover="showTip(event, 'fs21', 86)" class="id">x</span> 
-                <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 87)" onmouseover="showTip(event, 'fs19', 87)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 88)" onmouseover="showTip(event, 'fs20', 88)" class="id">map</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs34', 89)" onmouseover="showTip(event, 'fs34', 89)" class="id">xs</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs19', 90)" onmouseover="showTip(event, 'fs19', 90)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs35', 91)" onmouseover="showTip(event, 'fs35', 91)" class="id">tryFind</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs36', 92)" onmouseover="showTip(event, 'fs36', 92)" class="id">ys</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs36', 93)" onmouseover="showTip(event, 'fs36', 93)" class="id">ys</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs34', 94)" onmouseover="showTip(event, 'fs34', 94)" class="id">xs</span> <span class="pn">)</span> <span onmouseout="hideTip(event, 'fs33', 95)" onmouseover="showTip(event, 'fs33', 95)" class="id">y</span> <span class="pn">)</span>
-                <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 96)" onmouseover="showTip(event, 'fs19', 96)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs37', 97)" onmouseover="showTip(event, 'fs37', 97)" class="id">countBy</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs38', 98)" onmouseover="showTip(event, 'fs38', 98)" class="id">x</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs38', 99)" onmouseover="showTip(event, 'fs38', 99)" class="id">x</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs39', 100)" onmouseover="showTip(event, 'fs39', 100)" class="id">IsSome</span><span class="pn">)</span>
-          <span class="pn">)</span> <span onmouseout="hideTip(event, 'fs28', 101)" onmouseover="showTip(event, 'fs28', 101)" class="id">cachedRes</span> <span onmouseout="hideTip(event, 'fs16', 102)" onmouseover="showTip(event, 'fs16', 102)" class="id">res</span>
-
-<span class="pp">#time</span>
-
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs27', 103)" onmouseover="showTip(event, 'fs27', 103)" class="id">n15LookUpResult2</span> <span class="o">=</span>  
-    <span onmouseout="hideTip(event, 'fs26', 104)" onmouseover="showTip(event, 'fs26', 104)" class="fn">cachedn15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs13', 105)" onmouseover="showTip(event, 'fs13', 105)" class="id">peptideMass</span>
-
-<span onmouseout="hideTip(event, 'fs27', 106)" onmouseover="showTip(event, 'fs27', 106)" class="id">n15LookUpResult2</span> <span class="pn">.</span><span class="id">Length</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs40', 107)" onmouseover="showTip(event, 'fs40', 107)" class="id">n15LookUpResult3</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs26', 108)" onmouseover="showTip(event, 'fs26', 108)" class="fn">cachedn15LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs13', 109)" onmouseover="showTip(event, 'fs13', 109)" class="id">peptideMass</span>
-
-<span onmouseout="hideTip(event, 'fs40', 110)" onmouseover="showTip(event, 'fs40', 110)" class="id">n15LookUpResult3</span><span class="pn">.</span><span class="pn">[</span><span onmouseout="hideTip(event, 'fs40', 111)" onmouseover="showTip(event, 'fs40', 111)" class="id">n15LookUpResult3</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 112)" onmouseover="showTip(event, 'fs15', 112)" class="id">Length</span><span class="o">-</span><span class="n">1</span><span class="pn">]</span>
-<span onmouseout="hideTip(event, 'fs27', 113)" onmouseover="showTip(event, 'fs27', 113)" class="id">n15LookUpResult2</span> 
-
-<span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 114)" onmouseover="showTip(event, 'fs19', 114)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 115)" onmouseover="showTip(event, 'fs20', 115)" class="id">map</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs41', 116)" onmouseover="showTip(event, 'fs41', 116)" class="id">x</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs41', 117)" onmouseover="showTip(event, 'fs41', 117)" class="id">x</span><span class="pn">,</span> <span onmouseout="hideTip(event, 'fs40', 118)" onmouseover="showTip(event, 'fs40', 118)" class="id">n15LookUpResult3</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 119)" onmouseover="showTip(event, 'fs19', 119)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs35', 120)" onmouseover="showTip(event, 'fs35', 120)" class="id">tryFind</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs42', 121)" onmouseover="showTip(event, 'fs42', 121)" class="id">y</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs42', 122)" onmouseover="showTip(event, 'fs42', 122)" class="id">y</span><span class="pn">.</span><span class="id">BioSequence</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs41', 123)" onmouseover="showTip(event, 'fs41', 123)" class="id">x</span><span class="pn">.</span><span class="id">BioSequence</span><span class="pn">)</span><span class="pn">)</span>
-<span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 124)" onmouseover="showTip(event, 'fs19', 124)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs43', 125)" onmouseover="showTip(event, 'fs43', 125)" class="id">filter</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs44', 126)" onmouseover="showTip(event, 'fs44', 126)" class="id">x</span> <span class="k">-&gt;</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs45', 127)" onmouseover="showTip(event, 'fs45', 127)" class="fn">snd</span> <span onmouseout="hideTip(event, 'fs44', 128)" onmouseover="showTip(event, 'fs44', 128)" class="id">x</span><span class="pn">)</span><span class="pn">.</span><span class="id">IsNone</span><span class="pn">)</span>
-
-<span onmouseout="hideTip(event, 'fs40', 129)" onmouseover="showTip(event, 'fs40', 129)" class="id">n15LookUpResult3</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 130)" onmouseover="showTip(event, 'fs15', 130)" class="id">Length</span> 
-<span onmouseout="hideTip(event, 'fs27', 131)" onmouseover="showTip(event, 'fs27', 131)" class="id">n15LookUpResult2</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 132)" onmouseover="showTip(event, 'fs15', 132)" class="id">Length</span>
-
-<span onmouseout="hideTip(event, 'fs18', 133)" onmouseover="showTip(event, 'fs18', 133)" class="id">n15LookUpResult</span> 
-<span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 134)" onmouseover="showTip(event, 'fs19', 134)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs20', 135)" onmouseover="showTip(event, 'fs20', 135)" class="id">map</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs41', 136)" onmouseover="showTip(event, 'fs41', 136)" class="id">x</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs41', 137)" onmouseover="showTip(event, 'fs41', 137)" class="id">x</span><span class="pn">,</span> <span onmouseout="hideTip(event, 'fs27', 138)" onmouseover="showTip(event, 'fs27', 138)" class="id">n15LookUpResult2</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 139)" onmouseover="showTip(event, 'fs19', 139)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs35', 140)" onmouseover="showTip(event, 'fs35', 140)" class="id">tryFind</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs42', 141)" onmouseover="showTip(event, 'fs42', 141)" class="id">y</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs42', 142)" onmouseover="showTip(event, 'fs42', 142)" class="id">y</span><span class="pn">.</span><span class="id">BioSequence</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs41', 143)" onmouseover="showTip(event, 'fs41', 143)" class="id">x</span><span class="pn">.</span><span class="id">BioSequence</span><span class="pn">)</span><span class="pn">)</span>
-<span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs19', 144)" onmouseover="showTip(event, 'fs19', 144)" class="m">List</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs43', 145)" onmouseover="showTip(event, 'fs43', 145)" class="id">filter</span> <span class="pn">(</span><span class="k">fun</span> <span onmouseout="hideTip(event, 'fs44', 146)" onmouseover="showTip(event, 'fs44', 146)" class="id">x</span> <span class="k">-&gt;</span> <span class="pn">(</span><span onmouseout="hideTip(event, 'fs45', 147)" onmouseover="showTip(event, 'fs45', 147)" class="fn">snd</span> <span onmouseout="hideTip(event, 'fs44', 148)" onmouseover="showTip(event, 'fs44', 148)" class="id">x</span><span class="pn">)</span><span class="pn">.</span><span class="id">IsNone</span><span class="pn">)</span>
-
-<span onmouseout="hideTip(event, 'fs27', 149)" onmouseover="showTip(event, 'fs27', 149)" class="id">n15LookUpResult2</span><span class="pn">.</span><span class="pn">[</span><span onmouseout="hideTip(event, 'fs27', 150)" onmouseover="showTip(event, 'fs27', 150)" class="id">n15LookUpResult2</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 151)" onmouseover="showTip(event, 'fs15', 151)" class="id">Length</span><span class="o">-</span><span class="n">1</span><span class="pn">]</span>
-<span onmouseout="hideTip(event, 'fs27', 152)" onmouseover="showTip(event, 'fs27', 152)" class="id">n15LookUpResult2</span><span class="pn">.</span><span class="pn">[</span><span class="n">0</span><span class="pn">]</span>
-
-<span onmouseout="hideTip(event, 'fs27', 153)" onmouseover="showTip(event, 'fs27', 153)" class="id">n15LookUpResult2</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs15', 154)" onmouseover="showTip(event, 'fs15', 154)" class="id">Length</span>
-<span class="c">//</span>
-<span class="c">//cachi.Keys.[cachi.Keys.Count-1]</span>
-<span class="c">//let valy = Cache.binarySearch Cache.Border.Upper cachi 830500000L </span>
-<span class="c">//</span>
-<span class="c">//let listi = cachi.Values </span>
-<span class="c">//            |&gt; Seq.toList </span>
-<span class="c">//            |&gt; List.concat </span>
-<span class="c">//            |&gt; List.length</span>
-<span class="c">//[</span>
-<span class="c">//for i in listi do</span>
-<span class="c">//    yield    List.tryFind (fun x -&gt; x = i) n15LookUpResult</span>
-<span class="c">//] |&gt; List.countBy (fun x -&gt; x.IsSome)</span>
-<span class="c">//cachi.Count</span>
-<span class="c">//let cachi2 = Cache.createCache&lt;float, float list&gt;</span>
-<span class="c">//cachi2.Comparer.Compare(4.,2.)</span>
-<span class="c">//cachi.Comparer.Compare(4.,2.)</span>
-<span class="c">//</span>
-<span class="c">//for x in i do </span>
-<span class="c">//    cachi2.Add (x,i)</span>
-<span class="c">//</span>
-<span class="c">//cachi2.TryGetValue(cachi2.Keys.[cachi2.Keys.Count-1])</span>
-<span class="c">//</span>
-<span class="c">//</span>
-<span class="c">//i.Length</span>
-<span class="c">//cachi2.Clear()</span>
-<span class="c">//Cache.containsItemsBetween cachi2 (496.23395536185,497.) </span>
-<span class="c">//</span>
-<span class="c">//let a = cachi2.Keys.[cachi2.Keys.Count-1]</span>
-<span class="c">//</span>
-<span class="c">//let c = 497.</span>
-<span class="c">//</span>
-<span class="c">//a = c</span>
-<span class="c">//497. = 497.</span>
-<span class="c">//</span>
-<span class="c">//let i = [496.233 .. 0.001 .. 497.000] </span>
-<span class="c">//i.[i.Length-1]</span>
-<span class="c">//let cachi = Cache.createCache&lt;float, LookUpResult&lt;AminoAcid&gt; list&gt;</span>
-<span class="c">//cachi.Count</span>
 </code></pre></td>
 </tr>
 </table>
@@ -518,34 +300,34 @@ modification, a second lookUp in a database lacking IsotopicModification might r
 <span class="l">29: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns a instance of the type SearchDbParams</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs46', 155)" onmouseover="showTip(event, 'fs46', 155)" class="id">paramTestN14</span> <span class="o">=</span> <span class="pn">{</span>
-        <span class="id">Name</span><span class="o">=</span><span class="s">&quot;Creinhardtii_CpN14_full_phospho&quot;</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs41', 63)" onmouseover="showTip(event, 'fs41', 63)" class="id">paramTestN14</span> <span class="o">=</span> <span class="pn">{</span>
+        <span class="id">Name</span><span class="o">=</span><span class="s">&quot;Creinhardtii_N14&quot;</span>
         <span class="id">DbFolder</span>            <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/&quot;</span><span class="pn">)</span>
-        <span class="id">FastaPath</span>           <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/Creinhardtii_281_v5.5.protein.fasta&quot;</span><span class="pn">)</span>
-        <span class="id">FastaHeaderToName</span>   <span class="o">=</span> <span onmouseout="hideTip(event, 'fs7', 156)" onmouseover="showTip(event, 'fs7', 156)" class="id">id</span>
-        <span class="id">Protease</span>            <span class="o">=</span> <span class="id">Digestion</span><span class="pn">.</span><span class="id">Table</span><span class="pn">.</span><span class="id">getProteaseBy</span> <span class="s">&quot;Trypsin&quot;</span>
+        <span class="id">FastaPath</span>           <span class="o">=</span> <span class="pn">(</span><span class="k">__SOURCE_DIRECTORY__</span> <span class="o">+</span> <span class="s">&quot;/data/Chlamy_JGI5_5(Cp_Mp)_truncated.fasta&quot;</span><span class="pn">)</span>
+        <span class="fn">FastaHeaderToName</span>   <span class="o">=</span> <span onmouseout="hideTip(event, 'fs28', 64)" onmouseover="showTip(event, 'fs28', 64)" class="fn">id</span>
+        <span class="id">Protease</span>            <span class="o">=</span> <span onmouseout="hideTip(event, 'fs29', 65)" onmouseover="showTip(event, 'fs29', 65)" class="m">Digestion</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs30', 66)" onmouseover="showTip(event, 'fs30', 66)" class="m">Table</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs31', 67)" onmouseover="showTip(event, 'fs31', 67)" class="id">getProteaseBy</span> <span class="s">&quot;Trypsin&quot;</span>
         <span class="id">MinMissedCleavages</span>  <span class="o">=</span> <span class="n">0</span>
         <span class="id">MaxMissedCleavages</span>  <span class="o">=</span> <span class="n">3</span>
         <span class="id">MaxMass</span>             <span class="o">=</span> <span class="n">15000.</span>
         <span class="id">MinPepLength</span>        <span class="o">=</span> <span class="n">4</span>
         <span class="id">MaxPepLength</span>        <span class="o">=</span> <span class="n">65</span>
         <span class="id">IsotopicMod</span>           <span class="o">=</span> <span class="pn">[</span><span class="pn">]</span>
-        <span class="id">MassMode</span>            <span class="o">=</span> <span class="id">SearchDB</span><span class="pn">.</span><span class="id">MassMode</span><span class="pn">.</span><span class="id">Monoisotopic</span>
-        <span class="id">MassFunction</span>        <span class="o">=</span> <span onmouseout="hideTip(event, 'fs4', 157)" onmouseover="showTip(event, 'fs4', 157)" class="id">massF</span>
+        <span onmouseout="hideTip(event, 'fs32', 68)" onmouseover="showTip(event, 'fs32', 68)" class="id">MassMode</span>            <span class="o">=</span> <span onmouseout="hideTip(event, 'fs5', 69)" onmouseover="showTip(event, 'fs5', 69)" class="m">SearchDB</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs32', 70)" onmouseover="showTip(event, 'fs32', 70)" class="rt">MassMode</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs33', 71)" onmouseover="showTip(event, 'fs33', 71)" class="id">Monoisotopic</span>
+        <span class="fn">MassFunction</span>        <span class="o">=</span> <span onmouseout="hideTip(event, 'fs22', 72)" onmouseover="showTip(event, 'fs22', 72)" class="fn">massF</span>
         <span class="id">FixedMods</span>           <span class="o">=</span> <span class="pn">[</span><span class="pn">]</span> 
-        <span class="id">VariableMods</span>        <span class="o">=</span> <span class="pn">[</span><span onmouseout="hideTip(event, 'fs2', 158)" onmouseover="showTip(event, 'fs2', 158)" class="id">phosphorylation</span><span class="pn">]</span>
-        <span class="id">VarModThreshold</span>     <span class="o">=</span> <span class="n">5</span>
+        <span class="id">VariableMods</span>        <span class="o">=</span> <span class="pn">[</span><span onmouseout="hideTip(event, 'fs6', 73)" onmouseover="showTip(event, 'fs6', 73)" class="id">phosphorylation</span><span class="pn">]</span>
+        <span class="id">VarModThreshold</span>     <span class="o">=</span> <span class="n">1</span>
         <span class="pn">}</span>
 <span class="pp">#time</span>
 <span class="c">/// Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs47', 159)" onmouseover="showTip(event, 'fs47', 159)" class="fn">n14DBLookUpBy</span> <span class="o">=</span>  
-        <span class="id">SearchDB</span><span class="pn">.</span><span class="id">getPeptideLookUpBy</span> <span onmouseout="hideTip(event, 'fs46', 160)" onmouseover="showTip(event, 'fs46', 160)" class="id">paramTestN14</span>   
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs42', 74)" onmouseover="showTip(event, 'fs42', 74)" class="fn">n14DBLookUpBy</span> <span class="o">=</span>  
+        <span onmouseout="hideTip(event, 'fs5', 75)" onmouseover="showTip(event, 'fs5', 75)" class="m">SearchDB</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs35', 76)" onmouseover="showTip(event, 'fs35', 76)" class="id">getPeptideLookUpBy</span> <span onmouseout="hideTip(event, 'fs41', 77)" onmouseover="showTip(event, 'fs41', 77)" class="id">paramTestN14</span>   
 <span class="c">/// Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range </span>
 <span class="c">/// of the inputMass-0.5 to inputMass+0.5 </span>
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs48', 161)" onmouseover="showTip(event, 'fs48', 161)" class="fn">n14LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs10', 162)" onmouseover="showTip(event, 'fs10', 162)" class="id">inputMass</span> <span class="o">=</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs11', 163)" onmouseover="showTip(event, 'fs11', 163)" class="id">lowerBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 164)" onmouseover="showTip(event, 'fs10', 164)" class="id">inputMass</span><span class="o">-</span><span class="n">0.5</span>
-        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs12', 165)" onmouseover="showTip(event, 'fs12', 165)" class="id">upperBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs10', 166)" onmouseover="showTip(event, 'fs10', 166)" class="id">inputMass</span><span class="o">+</span><span class="n">0.5</span> 
-        <span onmouseout="hideTip(event, 'fs47', 167)" onmouseover="showTip(event, 'fs47', 167)" class="fn">n14DBLookUpBy</span> <span onmouseout="hideTip(event, 'fs11', 168)" onmouseover="showTip(event, 'fs11', 168)" class="id">lowerBorder</span> <span onmouseout="hideTip(event, 'fs12', 169)" onmouseover="showTip(event, 'fs12', 169)" class="id">upperBorder</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs43', 78)" onmouseover="showTip(event, 'fs43', 78)" class="fn">n14LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs37', 79)" onmouseover="showTip(event, 'fs37', 79)" class="id">inputMass</span> <span class="o">=</span>
+        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs38', 80)" onmouseover="showTip(event, 'fs38', 80)" class="id">lowerBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs37', 81)" onmouseover="showTip(event, 'fs37', 81)" class="id">inputMass</span><span class="o">-</span><span class="n">0.5</span>
+        <span class="k">let</span> <span onmouseout="hideTip(event, 'fs39', 82)" onmouseover="showTip(event, 'fs39', 82)" class="id">upperBorder</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs37', 83)" onmouseover="showTip(event, 'fs37', 83)" class="id">inputMass</span><span class="o">+</span><span class="n">0.5</span> 
+        <span onmouseout="hideTip(event, 'fs42', 84)" onmouseover="showTip(event, 'fs42', 84)" class="fn">n14DBLookUpBy</span> <span onmouseout="hideTip(event, 'fs38', 85)" onmouseover="showTip(event, 'fs38', 85)" class="id">lowerBorder</span> <span onmouseout="hideTip(event, 'fs39', 86)" onmouseover="showTip(event, 'fs39', 86)" class="id">upperBorder</span>
 </code></pre></td>
 </tr>
 </table>
@@ -553,69 +335,56 @@ modification, a second lookUp in a database lacking IsotopicModification might r
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 <span class="l">2: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">/// Returns the result of the peptide lookup</span>
-<span class="c">//let n14LookUpResult = n14LookUpPeptideBy peptideMass</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">// Returns the result of the peptide lookup</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs44', 87)" onmouseover="showTip(event, 'fs44', 87)" class="id">n14LookUpResult</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs43', 88)" onmouseover="showTip(event, 'fs43', 88)" class="fn">n14LookUpPeptideBy</span> <span onmouseout="hideTip(event, 'fs40', 89)" onmouseover="showTip(event, 'fs40', 89)" class="id">peptideMass</span>
 </code></pre></td>
 </tr>
 </table>
 
-<div class="tip" id="fs1">val sdbParams : obj</div>
-<div class="tip" id="fs2">val phosphorylation : obj<br /><em><br /><br />&#160;Returns a instance of the type SearchModification</em></div>
-<div class="tip" id="fs3">val isoMod : obj<br /><em><br /><br />&#160;Returns a instance of the type SearchInfoIsotopic </em></div>
-<div class="tip" id="fs4">val massF : (obj -&gt; float)<br /><em><br /><br />Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP</em></div>
-<div class="tip" id="fs5">Multiple items<br />val float : value:&#39;T -&gt; float (requires member op_Explicit)<br /><br />--------------------<br />type float = System.Double<br /><br />--------------------<br />type float&lt;&#39;Measure&gt; = float</div>
-<div class="tip" id="fs6">val paramTestN15 : obj<br /><em><br /><br />&#160;Returns a instance of the type SearchDbParams</em></div>
-<div class="tip" id="fs7">val id : x:&#39;T -&gt; &#39;T</div>
-<div class="tip" id="fs8">val n15DBLookUpBy : (float -&gt; float -&gt; obj list)<br /><em><br /><br />&#160;Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</em></div>
-<div class="tip" id="fs9">val n15LookUpPeptideBy : inputMass:float -&gt; obj list<br /><em><br /><br />&#160;Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range <br />&#160;of the inputMass-0.5 to inputMass+0.5 </em></div>
-<div class="tip" id="fs10">val inputMass : float</div>
-<div class="tip" id="fs11">val lowerBorder : float</div>
-<div class="tip" id="fs12">val upperBorder : float</div>
-<div class="tip" id="fs13">val peptideMass : float<br /><em><br /><br />&#160;PeptideMass of the peptide known from the peptide *ANLGMEVMHER*. </em></div>
-<div class="tip" id="fs14">val i : float list</div>
-<div class="tip" id="fs15">property List.Length: int</div>
-<div class="tip" id="fs16">val res : obj list list</div>
-<div class="tip" id="fs17">val x : float</div>
-<div class="tip" id="fs18">val n15LookUpResult : obj list</div>
-<div class="tip" id="fs19">Multiple items<br />module List<br /><br />from Microsoft.FSharp.Collections<br /><br />--------------------<br />type List&lt;&#39;T&gt; =<br />&#160;&#160;| ( [] )<br />&#160;&#160;| ( :: ) of Head: &#39;T * Tail: &#39;T list<br />&#160;&#160;&#160;&#160;interface IReadOnlyCollection&lt;&#39;T&gt;<br />&#160;&#160;&#160;&#160;interface IEnumerable<br />&#160;&#160;&#160;&#160;interface IEnumerable&lt;&#39;T&gt;<br />&#160;&#160;&#160;&#160;member GetSlice : startIndex:int option * endIndex:int option -&gt; &#39;T list<br />&#160;&#160;&#160;&#160;member Head : &#39;T<br />&#160;&#160;&#160;&#160;member IsEmpty : bool<br />&#160;&#160;&#160;&#160;member Item : index:int -&gt; &#39;T with get<br />&#160;&#160;&#160;&#160;member Length : int<br />&#160;&#160;&#160;&#160;member Tail : &#39;T list<br />&#160;&#160;&#160;&#160;static member Cons : head:&#39;T * tail:&#39;T list -&gt; &#39;T list<br />&#160;&#160;&#160;&#160;...</div>
-<div class="tip" id="fs20">val map : mapping:(&#39;T -&gt; &#39;U) -&gt; list:&#39;T list -&gt; &#39;U list</div>
-<div class="tip" id="fs21">val x : obj list</div>
-<div class="tip" id="fs22">val cachi2 : obj<br /><em><br /><br />&#160;Returns the result of the peptide lookup </em></div>
-<div class="tip" id="fs23">Multiple items<br />val int64 : value:&#39;T -&gt; int64 (requires member op_Explicit)<br /><br />--------------------<br />type int64 = System.Int64<br /><br />--------------------<br />type int64&lt;&#39;Measure&gt; = int64</div>
-<div class="tip" id="fs24">type &#39;T list = List&lt;&#39;T&gt;</div>
-<div class="tip" id="fs25">val cachedLook : (float -&gt; float -&gt; obj list)</div>
-<div class="tip" id="fs26">val cachedn15LookUpPeptideBy : inputMass:float -&gt; obj list</div>
-<div class="tip" id="fs27">val n15LookUpResult2 : obj list</div>
-<div class="tip" id="fs28">val cachedRes : obj list list</div>
-<div class="tip" id="fs29">module Seq<br /><br />from Microsoft.FSharp.Collections</div>
-<div class="tip" id="fs30">val concat : sources:seq&lt;#seq&lt;&#39;T&gt;&gt; -&gt; seq&lt;&#39;T&gt;</div>
-<div class="tip" id="fs31">val length : source:seq&lt;&#39;T&gt; -&gt; int</div>
-<div class="tip" id="fs32">val map2 : mapping:(&#39;T1 -&gt; &#39;T2 -&gt; &#39;U) -&gt; list1:&#39;T1 list -&gt; list2:&#39;T2 list -&gt; &#39;U list</div>
-<div class="tip" id="fs33">val y : obj list</div>
-<div class="tip" id="fs34">val xs : obj</div>
-<div class="tip" id="fs35">val tryFind : predicate:(&#39;T -&gt; bool) -&gt; list:&#39;T list -&gt; &#39;T option</div>
-<div class="tip" id="fs36">val ys : obj</div>
-<div class="tip" id="fs37">val countBy : projection:(&#39;T -&gt; &#39;Key) -&gt; list:&#39;T list -&gt; (&#39;Key * int) list (requires equality)</div>
-<div class="tip" id="fs38">val x : obj option</div>
-<div class="tip" id="fs39">property Option.IsSome: bool</div>
-<div class="tip" id="fs40">val n15LookUpResult3 : obj list</div>
-<div class="tip" id="fs41">val x : obj</div>
-<div class="tip" id="fs42">val y : obj</div>
-<div class="tip" id="fs43">val filter : predicate:(&#39;T -&gt; bool) -&gt; list:&#39;T list -&gt; &#39;T list</div>
-<div class="tip" id="fs44">val x : obj * obj option</div>
-<div class="tip" id="fs45">val snd : tuple:(&#39;T1 * &#39;T2) -&gt; &#39;T2</div>
-<div class="tip" id="fs46">val paramTestN14 : obj<br /><em><br /><br />&#160;Returns a instance of the type SearchDbParams</em></div>
-<div class="tip" id="fs47">val n14DBLookUpBy : (float -&gt; float -&gt; obj)<br /><em><br /><br />&#160;Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</em></div>
-<div class="tip" id="fs48">val n14LookUpPeptideBy : inputMass:float -&gt; obj<br /><em><br /><br />&#160;Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range <br />&#160;of the inputMass-0.5 to inputMass+0.5 </em></div>
-<div class="tip" id="fs49">namespace System</div>
-<div class="tip" id="fs50">namespace System.Collections</div>
-<div class="tip" id="fs51">namespace System.Collections.Generic</div>
-<div class="tip" id="fs52">Multiple items<br />type LookUpResultComp =<br />&#160;&#160;interface obj<br />&#160;&#160;new : unit -&gt; LookUpResultComp<br />&#160;&#160;override Compare : x:&#39;a * y:&#39;b -&gt; int<br /><em><br /><br />&#160;Returns the result of the peptide lookup</em><br /><br />--------------------<br />new : unit -&gt; LookUpResultComp</div>
-<div class="tip" id="fs53">type IComparer&lt;&#39;T&gt; =<br />&#160;&#160;member Compare : x:&#39;T * y:&#39;T -&gt; int</div>
-<div class="tip" id="fs54">val this : LookUpResultComp</div>
-<div class="tip" id="fs55">val x : &#39;a</div>
-<div class="tip" id="fs56">val y : &#39;b</div>
-<div class="tip" id="fs57">val abs : value:&#39;T -&gt; &#39;T (requires member Abs)</div>
+<div class="tip" id="fs1">namespace BioFSharp</div>
+<div class="tip" id="fs2">namespace BioFSharp.Mz</div>
+<div class="tip" id="fs3">module ModificationInfo<br /><br />from BioFSharp</div>
+<div class="tip" id="fs4">module AminoAcids<br /><br />from BioFSharp</div>
+<div class="tip" id="fs5">module SearchDB<br /><br />from BioFSharp.Mz</div>
+<div class="tip" id="fs6">val phosphorylation : SearchModification<br /><em><br /><br />&#160;Returns a instance of the type SearchModification</em></div>
+<div class="tip" id="fs7">union case SearchModSite.Specific: AminoAcid * ModLocation -&gt; SearchModSite</div>
+<div class="tip" id="fs8">union case AminoAcid.Ser: AminoAcid</div>
+<div class="tip" id="fs9">type ModLocation =<br />&#160;&#160;| Residual = 0<br />&#160;&#160;| Cterm = 1<br />&#160;&#160;| Nterm = 2<br />&#160;&#160;| ProteinCterm = 3<br />&#160;&#160;| ProteinNterm = 4<br />&#160;&#160;| Isotopic = 5</div>
+<div class="tip" id="fs10">ModLocation.Residual: ModLocation = 0</div>
+<div class="tip" id="fs11">union case AminoAcid.Thr: AminoAcid</div>
+<div class="tip" id="fs12">union case AminoAcid.Tyr: AminoAcid</div>
+<div class="tip" id="fs13">type SearchModType =<br />&#160;&#160;| Minus<br />&#160;&#160;| Plus</div>
+<div class="tip" id="fs14">union case SearchModType.Plus: SearchModType</div>
+<div class="tip" id="fs15">val isoMod : SearchInfoIsotopic<br /><em><br /><br />&#160;Returns a instance of the type SearchInfoIsotopic </em></div>
+<div class="tip" id="fs16">val createSearchInfoIsotopic : name:string -&gt; sourceEl:Elements.Element -&gt; targetEl:Elements.Element -&gt; SearchInfoIsotopic</div>
+<div class="tip" id="fs17">module Elements<br /><br />from BioFSharp</div>
+<div class="tip" id="fs18">module Table<br /><br />from BioFSharp.Elements</div>
+<div class="tip" id="fs19">val N : Elements.Element</div>
+<div class="tip" id="fs20">module Heavy<br /><br />from BioFSharp.Elements.Table</div>
+<div class="tip" id="fs21">val N15 : Elements.Element</div>
+<div class="tip" id="fs22">val massF : (IBioItem -&gt; float)<br /><em><br /><br />Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP</em></div>
+<div class="tip" id="fs23">type IBioItem =<br />&#160;&#160;interface<br />&#160;&#160;&#160;&#160;abstract member Formula : Formula<br />&#160;&#160;&#160;&#160;abstract member Name : string<br />&#160;&#160;&#160;&#160;abstract member Symbol : char<br />&#160;&#160;&#160;&#160;abstract member isGap : bool<br />&#160;&#160;&#160;&#160;abstract member isTerminator : bool<br />&#160;&#160;end</div>
+<div class="tip" id="fs24">Multiple items<br />val float : value:&#39;T -&gt; float (requires member op_Explicit)<br /><br />--------------------<br />type float = System.Double<br /><br />--------------------<br />type float&lt;&#39;Measure&gt; = float</div>
+<div class="tip" id="fs25">module BioItem<br /><br />from BioFSharp</div>
+<div class="tip" id="fs26">val initMonoisoMassWithMemP&lt;&#39;a (requires &#39;a :&gt; IBioItem)&gt; : (IBioItem -&gt; float) (requires &#39;a :&gt; IBioItem)</div>
+<div class="tip" id="fs27">val paramTestN15 : SearchDbParams<br /><em><br /><br />&#160;Returns a instance of the type SearchDbParams</em></div>
+<div class="tip" id="fs28">val id : x:&#39;T -&gt; &#39;T</div>
+<div class="tip" id="fs29">module Digestion<br /><br />from BioFSharp</div>
+<div class="tip" id="fs30">module Table<br /><br />from BioFSharp.Digestion</div>
+<div class="tip" id="fs31">val getProteaseBy : name:string -&gt; Digestion.Protease</div>
+<div class="tip" id="fs32">type MassMode =<br />&#160;&#160;| Average<br />&#160;&#160;| Monoisotopic<br />&#160;&#160;&#160;&#160;override ToString : unit -&gt; string</div>
+<div class="tip" id="fs33">union case MassMode.Monoisotopic: MassMode</div>
+<div class="tip" id="fs34">val n15DBLookUpBy : (float -&gt; float -&gt; LookUpResult&lt;AminoAcid&gt; list)<br /><em><br /><br />&#160;Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</em></div>
+<div class="tip" id="fs35">val getPeptideLookUpBy : sdbParams:SearchDbParams -&gt; (float -&gt; float -&gt; LookUpResult&lt;AminoAcid&gt; list)</div>
+<div class="tip" id="fs36">val n15LookUpPeptideBy : inputMass:float -&gt; LookUpResult&lt;AminoAcid&gt; list<br /><em><br /><br />&#160;Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range <br />&#160;of the inputMass-0.5 to inputMass+0.5 </em></div>
+<div class="tip" id="fs37">val inputMass : float</div>
+<div class="tip" id="fs38">val lowerBorder : float</div>
+<div class="tip" id="fs39">val upperBorder : float</div>
+<div class="tip" id="fs40">val peptideMass : float<br /><em><br /><br />&#160;PeptideMass of the peptide known from the peptide *ANLGMEVMHER*. </em></div>
+<div class="tip" id="fs41">val paramTestN14 : SearchDbParams<br /><em><br /><br />&#160;Returns a instance of the type SearchDbParams</em></div>
+<div class="tip" id="fs42">val n14DBLookUpBy : (float -&gt; float -&gt; LookUpResult&lt;AminoAcid&gt; list)<br /><em><br /><br />&#160;Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)</em></div>
+<div class="tip" id="fs43">val n14LookUpPeptideBy : inputMass:float -&gt; LookUpResult&lt;AminoAcid&gt; list<br /><em><br /><br />&#160;Returns a function that takes one inputMass and returns a list of peptides (wrapped in the type LookUpResult) in the range <br />&#160;of the inputMass-0.5 to inputMass+0.5 </em></div>
+<div class="tip" id="fs44">val n14LookUpResult : LookUpResult&lt;AminoAcid&gt; list</div>
 
         </div>
         <div class="span3">
