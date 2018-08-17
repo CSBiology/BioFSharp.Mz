@@ -1,0 +1,29 @@
+type file
+id BioFSharp.Mz
+title
+    BioFSharp.Mz
+owners
+    \"David Zimmer\"; \"Timo Mühlhaus\"
+authors 
+    \"David Zimmer\"; \"Timo Mühlhaus\"
+projectUrl
+    https://github.com/CSBiology/BioFSharp.Mz
+iconUrl
+    https://raw.githubusercontent.com/CSBiology/BioFSharp.Mz/master/docs/files/img/logo.png
+licenseUrl
+    https://github.com/CSBiology/BioFSharp.Mz/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+language
+    F#
+copyright
+    Copyright 2017
+tags
+    BioFSharp BioFSharp.Mz Proteomics Mz
+summary
+    BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data.
+description
+    BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data.
+
+files
+	../../bin/BioFSharp.Mz ==> lib
