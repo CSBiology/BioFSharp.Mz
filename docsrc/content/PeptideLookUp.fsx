@@ -15,8 +15,7 @@ Peptide retrieval by mass
 
 
 (**
-This part of the documentation aims to give you a brief overview of the functionality of SearchDB.fs. This Module contains functions  
-to initialize a user configured peptide database and to subsequently perform common database operations such as inserts or lookUps.
+This part of the documentation aims to give you a brief overview of the functionality of SearchDB.fs. This Module contains functions to initialize a user configured peptide database and to subsequently perform common database operations such as inserts or lookUps.
 
 
 Creating a peptide database
@@ -182,8 +181,6 @@ the database does not contain any peptides in the given massRange.
 let peptideMass = 1285.590726
 
 n15LookUpPeptideBy 1000.
-#time
-
 
 (**
 The possibility that the database is empty can be ruled out by performing a lookUp with the mass 1000., which should return a list filled with 
