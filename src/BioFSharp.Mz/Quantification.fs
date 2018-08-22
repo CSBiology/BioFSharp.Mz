@@ -101,36 +101,7 @@ module Quantification =
     module MyQuant = 
 
 
-        //TODO add to SignalDetection
-        let idxOfHighestLabeledPeakBy (labeledData: Tag<Care.Extrema,(float*float)>[]) (labelV:Care.Extrema) = 
-            if labeledData |> Array.isEmpty then None
-            else
-            labeledData  
-            |> Array.mapi (fun i x -> i, x) 
-            |> Array.filter (fun (i,x) -> x.Meta = labelV)
-            |> fun farr -> 
-                if farr |> Array.isEmpty then 
-                    None     
-                else  
-                    farr 
-                    |> Array.maxBy (fun (idx,value) -> snd value.Data ) 
-                    |> Some
-                
-        //TODO add to SignalDetection
-        let idxOfClosestLabeledPeak (labeledData: Tag<Care.Extrema,(float*float)>[]) (labelV:Care.Extrema) xValue = 
-            if labeledData |> Array.isEmpty then None
-            else
-            labeledData  
-            |> Array.mapi (fun i x -> i, x) 
-            |> Array.filter (fun (i,x) -> x.Meta = labelV)
-            |> fun farr -> 
-                if farr |> Array.isEmpty then 
-                    None     
-                else
-                    farr 
-                    |> Array.minBy (fun (idx,value) -> abs (fst value.Data - xValue) ) 
-                    |> Some
-            
+
                 
 
         // TODO: Add to FSharp.Care

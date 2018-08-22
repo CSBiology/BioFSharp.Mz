@@ -100,6 +100,34 @@ module SignalDetection =
                     yield i
                 |]    
 
+        /// Returns Index of the highestPeak flanking a given mzValue
+        let idxOfHighestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
+            let idxHigh = 
+                mzData |> Array.tryFindIndex (fun x -> x > mzValue) // faster as binary search
+            let idxLow = 
+                match idxHigh with 
+                | None   -> Some (mzData.Length-1) 
+                | Some value -> match value with 
+                                | 0 -> None
+                                | _ -> Some (value-1)  
+            if idxLow = None then 
+                 idxHigh.Value
+            elif idxHigh = None then 
+                 idxLow.Value
+            else
+                if intensityData.[idxLow.Value] > intensityData.[idxHigh.Value] then 
+                     idxLow.Value
+                else idxHigh.Value
+                
+        /// Returns Index of the highestPeak flanking a given mzValue
+        let idxOfClosestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
+            if mzData |> Array.isEmpty then 0
+            else
+            mzData 
+            |> Array.mapi (fun i x -> abs (x - mzValue), i) // faster as binary search
+            |> Array.minBy (fun (value,idx) -> value)
+            |> fun (value,idx) -> idx
+
         /// Returns a collection of local Maxima and Minima. Attention: The algorithm is very sensitive to noise   
         let labelPeaks negYThreshold posYThreshold (xData:float[]) (smoothYData:float[]) =
             if xData.Length <= 5 then [||]
@@ -120,6 +148,36 @@ module SignalDetection =
                     yield {Meta=Extrema.None; Data= xData.[i],smoothYData.[i]}
                 |]    
 
+        // Returns the index of the peak with the highest intensity
+        let idxOfHighestLabeledPeakBy (labeledData: Tag<Extrema,(float*float)>[]) (labelV:Extrema) = 
+            if labeledData |> Array.isEmpty then None
+            else
+            labeledData  
+            |> Array.mapi (fun i x -> i, x) 
+            |> Array.filter (fun (i,x) -> x.Meta = labelV)
+            |> fun farr -> 
+                if farr |> Array.isEmpty then 
+                    None     
+                else  
+                    farr 
+                    |> Array.maxBy (fun (idx,value) -> snd value.Data ) 
+                    |> Some
+                
+        // Returns the index of the peak with the highest intensity
+        let idxOfClosestLabeledPeak (labeledData: Tag<Extrema,(float*float)>[]) (labelV:Extrema) xValue = 
+            if labeledData |> Array.isEmpty then None
+            else
+            labeledData  
+            |> Array.mapi (fun i x -> i, x) 
+            |> Array.filter (fun (i,x) -> x.Meta = labelV)
+            |> fun farr -> 
+                if farr |> Array.isEmpty then 
+                    None     
+                else
+                    farr 
+                    |> Array.minBy (fun (idx,value) -> abs (fst value.Data - xValue) ) 
+                    |> Some
+            
         /// Returns a Array containing the distances between adjacent mz values of the input array.
         let createXspacing (mzData:float[]) =
             let xSpacing = Array.create (mzData.Length) 0.

@@ -60,36 +60,6 @@ module ChargeState =
     
     let createTestedItem testedObject pValue = {
         TestedObject=testedObject; PValue=pValue }
-    
-    //TODO add to SignalDetection
-    /// Returns Index of the highestPeak flanking a given mzValue
-    let idxOfHighestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
-        let idxHigh = 
-            mzData |> Array.tryFindIndex (fun x -> x > mzValue) // faster as binary search
-        let idxLow = 
-            match idxHigh with 
-            | None   -> Some (mzData.Length-1) 
-            | Some value -> match value with 
-                            | 0 -> None
-                            | _ -> Some (value-1)  
-        if idxLow = None then 
-             idxHigh.Value
-        elif idxHigh = None then 
-             idxLow.Value
-        else
-            if intensityData.[idxLow.Value] > intensityData.[idxHigh.Value] then 
-                 idxLow.Value
-            else idxHigh.Value
-                
-    /// TODO refactor to SignalDetection 
-    /// Returns Index of the highestPeak flanking a given mzValue
-    let idxOfClosestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
-        if mzData |> Array.isEmpty then 0
-        else
-        mzData 
-        |> Array.mapi (fun i x -> abs (x - mzValue), i) // faster as binary search
-        |> Array.minBy (fun (value,idx) -> value)
-        |> fun (value,idx) -> idx
 
     /// Returns a Collection of MZIntensityPeaks, The Collection starts with the first Element on the right side of the startIdx. 
     /// and ends either with the last element of the mzIntensityArray or when the MzDistance to the highest Peak exceeds 
@@ -232,7 +202,7 @@ module ChargeState =
     let putativePrecursorChargeStatesBy (chargeDeterminationParams: ChargeDetermParams) (mzData: float []) (intensityData: float []) (precursorMZ:float) =
         if mzData |> Array.isEmpty || intensityData |> Array.isEmpty then []
         else
-        let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
+        let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (Care.idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
         originSet
         |> powerSetOf 
         |> List.filter (fun subSet -> subSet.SubSetLength > 1)
