@@ -6,12 +6,18 @@ type PeakArray<[<EqualityConditionalOn; ComparisonConditionalOn >]'a when 'a :> 
 
 module PeakArray =
 
+    /// Builds a new PeakArray whose elements are the results of applying the given function to each 
+    /// of the elements of the PeakArray.
     let map f pkarr : PeakArray<_> = 
         Array.map f pkarr
 
+    /// Iterates the mz and intensity array and creates a Peak(mz,intensity) for each value pair. 
+    /// Returns a new Peak array. 
     let zipMzInt (mz:array<float>) (intensity:array<float>) : PeakArray<_> = 
         Array.map2 (fun m i -> Peak(m,i)) mz intensity
 
+    /// Iterates the PeakArray and unzips the value fields of each peak into two seperate arrays, the first containing 
+    /// the mz values, the second the intensities. 
     let unzipMzInt (pkarr : PeakArray<_>) = 
         let n = pkarr.Length
         let mz     = Array.zeroCreate n
