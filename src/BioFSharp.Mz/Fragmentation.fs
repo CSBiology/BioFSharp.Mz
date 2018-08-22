@@ -7,12 +7,17 @@ module Fragmentation =
     open BioFSharp
     open BioFSharp.IO
 
+    /// Set of amino acids that are prone to cleave off an H2O molecule of their side chain uppon fragmentation.
     let waterLossSet = set [AminoAcids.Ser;AminoAcids.Thr;AminoAcids.Glu;AminoAcids.Asp;]
+
+    /// Set of amino acids that are prone to cleave off an NH2 molecule of their side chain uppon fragmentation.
     let aminoLossSet = set [AminoAcids.Arg;AminoAcids.Lys;AminoAcids.Gln;AminoAcids.Asn;]
 
+    /// Returns true if the amino acid "a" is prone to cleave off an H2O molecule of their side chain uppon fragmentation.
     let isWaterLoss a =
         waterLossSet.Contains(a)
 
+    /// Returns true if the amino acid "a" is prone to cleave off an NH2 molecule of their side chain uppon fragmentation.
     let isAminoLoss a =
         aminoLossSet.Contains(a)
 
@@ -33,11 +38,12 @@ module Fragmentation =
         DecoyMasses  = decoyMasses
         }
     
-    [<AutoOpenAttribute>]
+    [<AutoOpen>]
     module private BioList =
 
         open BioFSharp.Mz.Peaks
         open BioFSharp.Mz.Ions
+
         ///
         let private calcBorYIonFragMass (massfunction:Formula.Formula -> float) acc aa = 
             acc + massfunction (AminoAcids.formula aa)
@@ -110,7 +116,8 @@ module Fragmentation =
                                 ) []
             createPeakFamily mainPeak dependentPeaks
 
-        ///
+
+        /// Returns the masses of a, b and c series, specified by the ionSeries parameter. The mass accuracy is determined by the massfunction applied.        
         let abcfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
             ///
             let rec series aminoList waterLoss aminoLoss fragMasses acc =
@@ -180,7 +187,7 @@ module Fragmentation =
             series aal false false [] 0.0 
             |> List.rev
 
-        ///
+        /// Returns the masses of x, y and z series, specified by the ionSeries parameter. The mass accuracy is determined by the massfunction applied.
         let xyzfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
             ///
             let rec series aminoList waterLoss aminoLoss fragMasses acc =
@@ -249,69 +256,65 @@ module Fragmentation =
 
     module Series = 
                     
-        //type NTerminalSeries = (Formula.Formula -> float) -> AminoAcids.AminoAcid list -> PeakFamily<TaggedMass.TaggedMass> list
-        //type CTerminalSeries = (Formula.Formula -> float) -> AminoAcids.AminoAcid list -> PeakFamily<TaggedMass.TaggedMass> list 
-        ///// 
-        //let abcOfBioList :NTerminalSeries = 
-        //    fun massfunction aal -> BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
-        
-        /// 
+        /// Retunrs the a b and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let abcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
-            BioList.abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
+            abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
 
-        ///
+        /// Returns the a and b series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let abOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =  
             (abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B) aal)
 
-        ///
+        /// Returns the a and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let acOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.C) aal
 
-        ///
+        /// Returns the b and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let bcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal
 
-        ///
+        /// Returns the a series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let aOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A) aal
 
-        ///
+        /// Returns the b series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let bOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B) aal
 
-        ///
+        /// Returns the c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let cOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.C) aal
 
-        ///
+        /// Returns the x y and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let xyzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
-        ///
+        /// Returns the x and y series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let xyOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y) aal
 
-        ///
+        /// Returns the x and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let xzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Z) aal
 
-        ///
+        /// Returns the y and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let yzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
-        ///
+        /// Returns the x series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let xOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X) aal
 
-        ///
+        /// Returns the y series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let yOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y) aal
 
-        ///
+        /// Returns the z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
         let zOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
 
-        let inline fragmentMasses (nTerminalSeries) (cTerminalSeries) (massFunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        /// Returns the fragment masses of the amino acid sequence specified by aal. The ionseries are specified by functions
+        /// "nTerminalSeries" and "cTerminalSeries". The mass accuracy is determined by the massfunction applied.
+        let inline fragmentMasses nTerminalSeries cTerminalSeries (massFunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
             let targetMasses = 
                 let nTerm = nTerminalSeries massFunction aal
                 let cTerm = cTerminalSeries massFunction aal
