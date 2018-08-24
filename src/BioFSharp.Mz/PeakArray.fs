@@ -50,7 +50,7 @@ module PeakArray =
                 array.[index] <- max array.[index] p.Intensity)
         array
 
-    /// Bins peaks to their nearest 1 Da bin
+    /// Bins peaks to their nearest 1 Da bin. Filters out peaks where the mz < minMassBoarder & > maxMassBoarder
     let peaksToNearestUnitDaltonBinVector (pkarr:PeakArray<_>) (minMassBoarder:float) (maxMassBoarder:float) =
         let minMassBoarder = int minMassBoarder
         let maxMassBoarder = int maxMassBoarder

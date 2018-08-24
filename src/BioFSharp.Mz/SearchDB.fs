@@ -1241,6 +1241,7 @@ module SearchDB =
                 //|> List.map (createLookUpResultBy xModLookUp sdbParams)
         )
             
+            
     /// Returns a LookUpResult list 
     let getPeptideLookUpBy (sdbParams:SearchDbParams) =
         // Check existens by param
@@ -1264,6 +1265,7 @@ module SearchDB =
             let fasta = 
                 BioFSharp.IO.FastA.fromFile (BioArray.ofAminoAcidString) sdbParams.FastaPath                
             // Digest
+            let mutable peptideId = 0 
             fasta
             |> Seq.mapi 
                 (fun i fastaItem ->
@@ -1275,10 +1277,11 @@ module SearchDB =
                                             let cleavageRange = x.MissCleavageEnd - x.MissCleavageStart
                                             cleavageRange > sdbParams.MinPepLength && cleavageRange < sdbParams.MaxPepLength 
                                         )
-                        |> Array.mapi (fun peptideId pep ->
+                        |> Array.map (fun pep ->
                                             let container = 
                                                 ModCombinator.combineToModString modLookUp sdbParams.VarModThreshold sdbParams.MassFunction pep.PepSequence
-                                            createPeptideContainer (proteinId*100000+peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
+                                            peptideId <- peptideId + 1
+                                            createPeptideContainer (peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
                                         )
                         
                     createProteinContainer 
@@ -1291,6 +1294,7 @@ module SearchDB =
             |> ignore                
                 
             getPeptideLookUpFromFileBy sdbParams
+
 
     ///    
     let getPeptideLookUpWithMemBy calcIonSeries massFunction (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) lowerMass upperMass = 
