@@ -57,7 +57,7 @@ module SequestLike =
         | _                                                         -> 0.2 / charge
 
     /// Converts the fragment ion ladder to a theoretical Sequestlike spectrum at a given charge state. 
-    let private predictOf (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
+    let private theoSpecOf (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
         let predictPeak charge (taggedMass: TaggedMass.TaggedMass) = 
             Peak((Mass.toMZ taggedMass.Mass charge), (predictIntensitySimpleModel (taggedMass.Iontype) charge))
         let rec recloop (ions) (charge) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
@@ -111,8 +111,8 @@ module SequestLike =
     /// Converts the fragment ion ladder to a theoretical Sequestlike spectrum at a given charge state. 
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
     /// that are not within the scanLimits.
-    let private peaksToNormalizedIntensityArray (lowerScanLimit,upperScanLimit) charge ionSeries =         
-        let psi  = predictOf charge ionSeries  
+    let predictOf (lowerScanLimit,upperScanLimit) charge ionSeries =         
+        let psi  = theoSpecOf charge ionSeries  
         let npsi = PeakArray.peaksToNearestUnitDaltonBinVector psi lowerScanLimit upperScanLimit        
         npsi
 
@@ -181,7 +181,7 @@ module SequestLike =
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
     /// that are not within the scanLimits.
     let getTheoSpecs scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*FragmentMasses>) =
-        TheoreticalSpectra.getTheoSpecs peaksToNormalizedIntensityArray scanlimits chargeState possiblePeptideInfos
+        TheoreticalSpectra.getTheoSpecs predictOf scanlimits chargeState possiblePeptideInfos
 
     /// Calculates the SequestLike Scores for all peptides (possiblePeptideInfos).
     let calcSequestLikeScoresRevDecoy calcIonSeries (massfunction:Formula.Formula -> float) (scanlimits) (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) spectrumID =                             
@@ -198,13 +198,13 @@ module SequestLike =
                               let sequence = lookUpResult.BioSequence        
                               let ionSeries = calcIonSeries massfunction sequence    
                               //predicted  normalized intensity array (spectrum) 
-                              let p_nis = peaksToNormalizedIntensityArray scanlimits fCharge ionSeries 
+                              let p_nis = predictOf scanlimits fCharge ionSeries 
                               let xcorr = calcXCorr p_nis ms_nis
                               let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass  (List.length sequence) xcorr nan nan
                               
                               let revPeptide_decoy = sequence |> List.rev
                               let ionSeries_decoy  = calcIonSeries massfunction revPeptide_decoy
-                              let p_nis_decoy      = peaksToNormalizedIntensityArray scanlimits fCharge ionSeries_decoy 
+                              let p_nis_decoy      = predictOf scanlimits fCharge ionSeries_decoy 
                               let xcorr_decoy      = calcXCorr p_nis_decoy ms_nis
                               let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass revPeptide_decoy.Length xcorr_decoy nan nan
                               targetScore::decoyScore::acc  

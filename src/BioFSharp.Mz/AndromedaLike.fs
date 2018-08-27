@@ -82,7 +82,7 @@ module AndromedaLike =
           
     /// Converts the fragmentIon ladder to a theoretical spectrum at a given charge state. Filters out all theoretical peaks, that lie
     /// outside the given lower and upperScanLimits.
-    let private predictOf (lowerScanLimit,upperScanLimit) chargeState (fragments:PeakFamily<TaggedMass.TaggedMass> list)  =
+    let predictOf (lowerScanLimit,upperScanLimit) chargeState (fragments:PeakFamily<TaggedMass.TaggedMass> list)  =
         let predictPeak charge (taggedMass: TaggedMass.TaggedMass) = 
             TaggedPeak.TaggedPeak(taggedMass.Iontype, (Mass.toMZ taggedMass.Mass charge), nan)
         let computePeakFamily charge fragments = 

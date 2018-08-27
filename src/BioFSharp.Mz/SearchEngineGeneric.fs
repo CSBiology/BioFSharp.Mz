@@ -85,5 +85,5 @@ module SearchEngineGeneric =
             ///
             let lookUpResults = SearchDB.getPeptideLookUpWithMemBy calcIonSeries massfunction lookUpF lookUpCache lowerMass upperMass
             let andromedaResults = getTheoSpecsWithMem AndromedaLike.predictOf andromedaCache scanlimits chargeState lookUpResults
-            let sequestResults   = getTheoSpecsWithMem SequestLike.peaksToNormalizedIntensityArray sequestCache scanlimits chargeState lookUpResults
+            let sequestResults   = getTheoSpecsWithMem SequestLike.predictOf sequestCache scanlimits chargeState lookUpResults
             andromedaResults,sequestResults

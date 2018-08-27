@@ -203,31 +203,43 @@ module ChargeState =
         if mzData |> Array.isEmpty || intensityData |> Array.isEmpty then []
         else
         let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (Care.idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
-        originSet
-        |> powerSetOf 
-        |> List.filter (fun subSet -> subSet.SubSetLength > 1)
-        |> List.map (fun subSet -> 
-                        let peakPos = 
-                            subSet.Peaks
-                            |> Set.ofList
-                        let interPeakDistances = mzDistancesOf subSet.Peaks 
-                        let meanInterPeakDistances = FSharp.Stats.List.mean interPeakDistances
-                        let assignedCharge = getChargeBy chargeDeterminationParams meanInterPeakDistances
-                        let theoInterPeakDistances = 1. / float assignedCharge
-                        let distanceRealTheoPeakSpacing = 
-                            interPeakDistances
-                            |> List.map (fun distance -> distance - theoInterPeakDistances ) 
-                        let mzChargeDeviation = mzChargeDeviationBy interPeakDistances theoInterPeakDistances
-                        let score = getScore subSet.SubSetLength subSet.SourceSetLength mzChargeDeviation
-                        let putMass = BioFSharp.Mass.ofMZ precursorMZ (float assignedCharge)
-                        createAssignedCharge precursorMZ assignedCharge putMass mzChargeDeviation score distanceRealTheoPeakSpacing subSet.SubSetLength startPeakIntensity peakPos  
-                     )
-        |> List.sortBy (fun assignedCharge ->  assignedCharge.Score)
-        |> List.distinctBy (fun assignedCharge ->  assignedCharge.Charge)
-                                     
+        match originSet with 
+        /// if the peak number within a window of 1. Da exceeds 15 this is indicative of too much noise to accurately determine the charge state.
+        | oSet when oSet.SourceSetLength < 15 -> 
+            originSet
+            |> powerSetOf 
+            |> List.filter (fun subSet -> subSet.SubSetLength > 1)
+            |> List.map (fun subSet -> 
+                            let peakPos = 
+                                subSet.Peaks
+                                |> Set.ofList
+                            let interPeakDistances = mzDistancesOf subSet.Peaks 
+                            let meanInterPeakDistances = FSharp.Stats.List.mean interPeakDistances
+                            let assignedCharge = getChargeBy chargeDeterminationParams meanInterPeakDistances
+                            let theoInterPeakDistances = 1. / float assignedCharge
+                            let distanceRealTheoPeakSpacing = 
+                                interPeakDistances
+                                |> List.map (fun distance -> distance - theoInterPeakDistances ) 
+                            let mzChargeDeviation = mzChargeDeviationBy interPeakDistances theoInterPeakDistances
+                            let score = getScore subSet.SubSetLength subSet.SourceSetLength mzChargeDeviation
+                            let putMass = BioFSharp.Mass.ofMZ precursorMZ (float assignedCharge)
+                            createAssignedCharge precursorMZ assignedCharge putMass mzChargeDeviation score distanceRealTheoPeakSpacing subSet.SubSetLength startPeakIntensity peakPos  
+                         )
+            |> List.sortBy (fun assignedCharge ->  assignedCharge.Score)
+            |> List.distinctBy (fun assignedCharge ->  assignedCharge.Charge)
+        
+        | _ -> 
+            [
+                for i = chargeDeterminationParams.ExpectedMinimalCharge to chargeDeterminationParams.ExpectedMaximumCharge do
+                let mass = Mass.ofMZ precursorMZ (float i)
+                let score = getScore originSet.SubSetLength originSet.SourceSetLength 100.
+                yield createAssignedCharge precursorMZ i mass 100. score [for j = 0 to originSet.SourceSetLength-1 do yield 0.] 0 0. (Set[])
+            ]
+        
     /// Returns the StandardDeviation of the PeakDistances
     let peakPosStdDevBy (putativeChargeStates: AssignedCharge list) = 
         putativeChargeStates
+        |> List.filter (fun putativeChS -> putativeChS.DistanceRealTheoPeakSpacing.Length < 15 )
         |> List.map (fun putativeChS -> putativeChS.DistanceRealTheoPeakSpacing )
         |> List.concat 
         |> FSharp.Stats.Seq.stDev
@@ -288,3 +300,4 @@ module ChargeState =
                             |> (+) acc
                         ) 0. qTo p 
         Some divergence
+
