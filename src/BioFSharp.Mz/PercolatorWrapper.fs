@@ -27,7 +27,7 @@ module PercolatorWrapper =
             /// will be used to eliminate the lower scoring target or decoy PSM(s) of each scan+expMass combination. 
             /// If the input PSMs are detected to be coming from a concatenated search, this option will be turned on automatically, 
             /// as this is incompatible with the mix-max method. In case this detection fails, turn this option on explicitly.
-            | PostProcessing_TargedDecoyCompetition
+            | PostProcessing_TargetDecoyCompetition
 
         let private stringOfgO (gO:GeneralOptions) =
             match gO with 

@@ -3,16 +3,18 @@
 // it to define helpers that you do not want to show in the documentation.
 //#I "../../bin"
 //TODO: Add FILES and LINKS to other tutorials
-#I "../../bin/BioFSharp.Mz/net47/"
+//#I "../../bin/BioFSharp.Mz/net47/"
+#I @"C:\Users\david\Source\Repos\netCoreRepos\BioFSharp.Mz\src\BioFSharp.Mz\bin\Release\net47/"
 #r "BioFSharp.dll"
 #r "BioFSharp.Mz.dll"
 #r "FSharpAux.dll"
+#r "FSharp.Stats.dll"
+#r "Newtonsoft.Json.dll"
+#r @"C:\Users\david\Source\Repos\netCoreRepos\BioFSharp.Mz\packages\FSharp.Plotly\lib\net47\FSharp.Plotly.dll"
 (**
 Peptide retrieval by mass
 =========================
-
 *)
-
 
 (**
 This part of the documentation aims to give you a brief overview of the functionality of SearchDB.fs. This Module contains functions to initialize a user configured peptide database and to subsequently perform common database operations such as inserts or lookUps.
@@ -47,17 +49,58 @@ for which it can be assumed that roughly every peptide contains this modificatio
 This expression constructs a new instance of the type SearchModification, which is needed to define Fixed- and VariableModifications
 This type is inferred of the XMod ontology and the information stored in this type is needed to build instances of the type Modification.     
 *)
+/// computes a non-circular convolution of x and y 
+//let convolve (x:'a []) (y:'a []):'a []= 
+//    let k = (x.Length+y.Length-1)
+//    let tmp = Array.zeroCreate k
+//    for i = 0 to x.Length-1 do
+//        for j = 0 to (y.Length-1) do 
+//            tmp.[i+j] <- tmp.[i+j] + (x.[i] * y.[j])
+//    tmp 
+
+//let x = [|0. ..100.|]
+"C:\Users\david\OneDrive - tukl\Dokumente\BioInfo\82_TorstenProteins\CsbScaffold\.env\packages\runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography.OpenSsl\runtime.opensuse.13.2-x64.runtime.native.system.security.cryptography.openssl.4.3.3.nupkg".Length
+//let y = x |> Array.map (FSharp.Stats.Fitting.NonLinearRegression.Table.gaussModel.GetFunctionValue (FSharp.Stats.Vector.ofArray [|100.;50.;4.|]))
+//let discFilter = [|0.;0.;0.;0.;1.;-1.;0.;0.;0.;0.;0.|]
+//let yy = 
+//    let tmp =
+//        (convolve y discFilter)
+//    tmp.[5..tmp.Length-6]
+//x.Length
+//yy.Length
+
+//open FSharp.Plotly
+//[
+//Chart.Point(x,yy)
+//Chart.Point(x,y)
+//]
+//|> Chart.Combine
+//|> Chart.Show
+
+
 
 open BioFSharp
 open BioFSharp.Mz
 open ModificationInfo
 open AminoAcids
 open SearchDB
+open BioFSharp.Digestion
+#time
+
+open System 
+open System.Runtime.Serialization.Formatters.Binary
+open System.IO
+open BioFSharp.Mz.SearchDB
+
+
+
 
 /// Returns a instance of the type SearchModification
 let phosphorylation = {
     // Name of this SearchModification 
     Name="Phosphorylation" 
+    //
+    IsBiological = true
     // Xmod accession Number
     Accession="21" 
     // A brief description of the SearchModification
@@ -65,7 +108,7 @@ let phosphorylation = {
     // A string representation of the formula composition 
     Composition= "HO3P"
     // Specifices the ModLocation
-    Site= [Specific(Ser,ModLocation.Residual); Specific(Thr,ModLocation.Residual); Specific(Tyr,ModLocation.Residual)]
+    Site= [Specific(Met,ModLocation.Residual);(* Specific(Thr,ModLocation.Residual); Specific(Tyr,ModLocation.Residual)*)]
     // Specifies if the Modification is additive or subtractive
     MType=SearchModType.Plus
     // If a modified AminoAcid is shown via string representation this code is placed before
@@ -86,6 +129,20 @@ plans to introduce a IsotopicModifications e.g a replacement of the N14 isotopes
 /// Returns a instance of the type SearchInfoIsotopic 
 let isoMod = (SearchDB.createSearchInfoIsotopic "N15" Elements.Table.N Elements.Table.Heavy.N15)
 
+let isoM = isoMod |> SearchDB.createIsotopicMod
+let sample = BioList.ofAminoAcidString "AAA"
+let isoModSample = sample |> List.map (fun x -> AminoAcids.setModification isoM x)
+
+sample.[0] = isoModSample.[1]
+
+let getFrags seque = 
+    (Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList Formula.monoisoMass seque).TargetMasses 
+    |> List.map (fun x -> x.MainPeak)
+getFrags sample
+
+for i = 1 to 10000 do
+    getFrags isoModSample
+
 (**
 Selecting and initializing a mass function
 ------------------------------------------
@@ -100,27 +157,133 @@ creation.
 ///Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP
 let massF : (IBioItem -> float) =  BioItem.initMonoisoMassWithMemP
 
+
+let sample = BioList.ofAminoAcidString "AAA"
+
+let isoModSample = sample |> List.map (fun x -> AminoAcids.setModification isoM x)
+
+let m = AminoAcid.Met
+
+let acetylation'NTerm' =
+    createSearchModification  "Acetyl(N-Term)"  "1" "Acetylation of the protein N-terminus" false "C2H2ON"
+        [Any(ModLocation.Nterm)] SearchModType.Plus "no"
+
+let acetylation'NTermbio' =
+    createSearchModification  "Acetyl(N-Termbio)"  "2" "Acetylation of the protein N-terminusss" true "C2H2ON"
+        [Any(ModLocation.Nterm)] SearchModType.Plus "ja"
+
+let nonBioOx = SearchDB.ModCombinator.convertSearchModification [AminoAcid.Met] acetylation'NTerm' |> List.item 0 |> snd
+let bioOx    = SearchDB.ModCombinator.convertSearchModification [AminoAcid.Met] acetylation'NTermbio' |> List.item 0 |> snd
+
+
+let mIso = AminoAcid.Met |> AminoAcids.setModification isoM
+
+let mIsoBioOx    = mIso |> AminoAcids.setModification bioOx
+let mIsononBioOx = mIso |> AminoAcids.setModification nonBioOx
+
+for i = 1 to 1000000 do 
+let modW = "C2H2ON" |> Formula.parseFormulaString |> Formula.monoisoMass
+massF m 
+|> (+) modW 
+
+massF mIso
+massF mIsononBioOx
+massF mIsoBioOx
+
+massF isoModSample.[1]
+
+///
+let calcAIonFragMass (massfunction:Formula.Formula -> float) acc aa =
+    acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
+
+
+let acetylation'NTermbio' =
+    createSearchModification  "Acetyl(N-Termbio)"  "2" "Acetylation of the protein N-terminusss" true "CO"
+        [Any(ModLocation.Nterm)] SearchModType.Minus "ja"
+
+let bioOx = SearchDB.ModCombinator.convertSearchModification [AminoAcid.Met] acetylation'NTermbio' |> List.item 0 |> snd
+
+let calcAIonFragMassLol (massfunction:IBioItem -> float) acc aa =
+    acc + (massfunction (aa |> AminoAcids.setModification bioOx))
+         
+calcAIonFragMass Formula.monoisoMass 0. mIsononBioOx
+
+for i = 1 to 1000000 do 
+calcAIonFragMass Formula.monoisoMass 0. mIsononBioOx
+
+calcAIonFragMassLol massF 0. mIsononBioOx
 (**
 Incorporation of all parameters in a single record type
 -------------------------------------------------------
 This type contains all formerly designed Parameters and additional parameters. 
 *)
+let acetylation'NTerm' =
+    createSearchModification  "Acetyl(N-Term)"  "1" "Acetylation of the protein N-terminus" false "C2H2O"
+        [Any(ModLocation.Nterm)] SearchModType.Plus "no"
+
+let acetylation'NTermbio' =
+    createSearchModification  "Acetyl(N-Termbio)"  "2" "Acetylation of the protein N-terminusss" true "C2H2O"
+        [Any(ModLocation.Nterm)] SearchModType.Plus "ja"
+
+
+let totalIsoMod = ModificationInfo.createModification "AccumulatedIsoMods" true ModificationInfo.ModLocation.Isotopic (fun f -> [SearchDB.createIsotopicMod isoMod] |> List.fold (fun modF isoMod -> isoMod.Modify modF) f)
+
+
+
+let NTermbio = 
+    acetylation'NTermbio'
+    |> SearchDB.ModCombinator.convertSearchModification [AminoAcids.Ala]
+    |> Seq.item 0
+    |> snd
+
+let nTerm = 
+    acetylation'NTerm'
+    |> SearchDB.ModCombinator.convertSearchModification [AminoAcids.Ala]
+    |> Seq.item 0
+    |> snd
+    //|> fun x -> {x with Modify = (x.Modify >> totalIsoMod.Modify (*ModificationInfo.Table.N15.Modify*))}
+
+let mass:IBioItem -> float =  (*BioItem.monoisoMass //*)BioItem.initMonoisoMassWithMemP
+
+let moddddd = GlobalModificationInfo.initGlobalModificationOfMod mass [SearchDB.createIsotopicMod isoMod]
+BioItem.formula NTermbio 
+
+moddddd NTermbio 
+
+moddddd nTerm
+
+//let moddddd = GlobalModificationInfo.initGlobalModificationOfAA mass [SearchDB.createIsotopicMod isoMod]
+
+//moddddd AminoAcid.Glu
+
+let acetylation'ProtNTerm' =
+    createSearchModification "Acetyl(Protein N-Term)" "1" "Acetylation of the protein N-terminus" true "C2H2O"
+        [Any(ModLocation.ProteinNterm)] SearchModType.Plus "pn"
+
+
+let acetylation'CTerm' =
+    createSearchModification "Acetyl(C-Term)" "1" "Acetylation of the protein N-terminus" true "C2H2O"
+        [Any(ModLocation.Cterm)] SearchModType.Plus "ac"
+
+let acetylation'ProtCTerm' =
+    createSearchModification "Acetyl(Protein C-Term)" "1" "Acetylation of the protein N-terminus" true "C2H2O"
+        [Any(ModLocation.ProteinCterm)] SearchModType.Plus "pc"
 
 /// Returns a instance of the type SearchDbParams
 let paramTestN15 = {
-        Name="Creinhardtii_fullN15"
+        Name="Creinhardtii_fullN15_ProteinNTerm_final2_biofinal"
         // Path of db storage folder
         DbFolder            = (__SOURCE_DIRECTORY__ + "/data/")
         // Path of the user selected fasta file  
-        FastaPath           = (__SOURCE_DIRECTORY__ + "/data/Chlamy_JGI5_5(Cp_Mp)_truncated.fasta")
+        FastaPath           = (__SOURCE_DIRECTORY__ + "/data/Chlamy_JGI5_5(Cp_Mp).fasta")
         // Function that specifies the conversion of the Fasta Header to the protein name inserted in the database
         FastaHeaderToName   = id
         // Protease that is used during in silico digestion of the proteins
-        Protease            = Digestion.Table.getProteaseBy "Trypsin"
+        Protease            = Digestion.Table.Trypsin
         // Minimum number of missed cleavages
         MinMissedCleavages  = 0
         // Maximum number of missed cleavages
-        MaxMissedCleavages  = 3
+        MaxMissedCleavages  = 2
         // Maximum peptide mass inserted in the database
         MaxMass             = 15000.
         // Mininmum peptide length 
@@ -134,12 +297,13 @@ let paramTestN15 = {
         // Massfunction used during db creation
         MassFunction        = massF
         // List of "Fixedmodifications". 
-        FixedMods           = []
+        FixedMods           = [(*acetylation'NTerm';acetylation'NTermbio'*)]
         // List of "VariableModificaions".  
-        VariableMods        = []
+        VariableMods        = [Table.oxidation'Met';Table.acetylation'ProtNTerm'(*BioFSharp.Mz.SearchDB.Table.oxidation'Met';(*phosphorylation;*)acetylation'ProtNTerm'*)]
         // Maximum number of variable modifications per peptide this constrain is used to limit the computational 
-        VarModThreshold     = 5
+        VarModThreshold     = 2
         }
+#time  
 
 (**
 
@@ -152,12 +316,132 @@ SearchDB.getPeptideLookUpBy first checks if a database with the given parameters
 database creation process. If there is a database matching the user given SearchParameters the process will be finished 
 nearly immediatly. If a new database has to be created the computation time will depend on the complexity of the given 
 parameters such as the size of the FASTA file, the number of given Modifications, the maxPepLength et cetera. 
-   
+5+5   
 *)
 /// Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)
 let n15DBLookUpBy =  
         SearchDB.getPeptideLookUpBy paramTestN15   
-         
+
+open BioItemsConverter
+open BioList
+
+    /// Generates amino acid sequence of one-letter-code string containing modified AminoAcids indicated by 2 lowercase digits per modification. 
+let ofModAminoAcidStringWithIsoMod (converter: OptionConverter.AminoAcidOptionConverter) (converter': 'b -> Modification ) (isotopMod: Modification list option) (xModToSearchMod: Map<string,'b>) (aaStr: string) : BioList<_>  =
+    let aaStrL = aaStr.Length
+    
+    let rec loopWithGlobal count (modAcc: 'b list) acc (converter:OptionConverter.AminoAcidOptionConverter) (xModToSearchMod: Map<string,'b>)  (aaStr: string) = 
+        if count = aaStrL then 
+                acc
+        else 
+                let currentC = aaStr.[count]
+                if  (currentC |> Char.IsUpper = true) && modAcc = [] then 
+                    let currentA = (converter currentC).Value 
+                                |> setModifications isotopMod.Value
+                    loopWithGlobal (count+1) [] (currentA::acc) converter xModToSearchMod aaStr 
+                elif 
+                    ((currentC |> Char.IsUpper) = true) then
+                    let modList = List.map converter' (modAcc)
+                    let tmpAa = setModifications (isotopMod.Value@modList) (converter currentC).Value
+                    loopWithGlobal (count+1) [] (tmpAa::acc) converter xModToSearchMod aaStr
+                else 
+                    match Map.tryFind aaStr.[count.. count+1] xModToSearchMod with
+                    | Some modi -> loopWithGlobal (count+1) (modi::modAcc) acc converter xModToSearchMod aaStr
+                    | None      -> loopWithGlobal (count+1) modAcc acc converter xModToSearchMod aaStr                 
+    match isotopMod.IsSome with
+    | true  -> loopWithGlobal 0 [] [] converter xModToSearchMod aaStr
+    | false -> ofRevModAminoAcidString converter converter' xModToSearchMod aaStr
+
+
+    /// Generates amino acid sequence of one-letter-code string containing modified AminoAcids indicated by 2 lowercase digits per modification. 
+let ofModAminoAcidString (converter: OptionConverter.AminoAcidOptionConverter) (converter': 'b -> Modification ) (isotopMod: Modification list option) (xModToSearchMod: Map<string,'b>) (aaStr: string) : BioList<_>  =
+    let aaStrL = aaStr.Length
+    let converter a = 
+        match isotopMod with 
+        | Some modL -> converter a |> Option.get |> (setModifications modL)
+        | None      -> converter a |> Option.get
+    let accumMods startIdx =
+        let rec loop currentIdx acc (sequence: string) =
+            if currentIdx < 0 then acc
+            elif sequence.[currentIdx] = '[' then 
+                match Map.tryFind acc xModToSearchMod with 
+                | Some x -> x
+                | None   ->  
+            else 
+                loop (currentIdx-1) (string sequence.[currentIdx] + acc ) sequence 
+        loop startIdx "" sequence
+    let rec loopWithGlobal count (modAcc: 'b list) acc (converter:OptionConverter.AminoAcidOptionConverter) (xModToSearchMod: Map<string,'b>)  (aaStr: string) = 
+        if count = aaStrL then 
+                acc
+        else 
+                let currentC = aaStr.[count]
+                if  (currentC |> Char.IsUpper = true) && modAcc = [] then 
+                    let currentA = (converter currentC).Value 
+                                |> setModifications isotopMod.Value
+                    loopWithGlobal (count+1) [] (currentA::acc) converter xModToSearchMod aaStr 
+                elif 
+                    ((currentC |> Char.IsUpper) = true) then
+                    let modList = List.map converter' (modAcc)
+                    let tmpAa = setModifications (isotopMod.Value@modList) (converter currentC).Value
+                    loopWithGlobal (count+1) [] (tmpAa::acc) converter xModToSearchMod aaStr
+                else 
+                    match Map.tryFind aaStr.[count.. count+1] xModToSearchMod with
+                    | Some modi -> loopWithGlobal (count+1) (modi::modAcc) acc converter xModToSearchMod aaStr
+                    | None      -> loopWithGlobal (count+1) modAcc acc converter xModToSearchMod aaStr                 
+    match isotopMod.IsSome with
+    | true  -> loopWithGlobal 0 [] [] converter xModToSearchMod aaStr
+    | false -> ofRevModAminoAcidString converter converter' xModToSearchMod aaStr
+
+
+
+    ///// Generates amino acid sequence of one-letter-code string containing modified AminoAcids indicated by 2 lowercase digits per modification. 
+    //let ofRevModAminoAcidString (converter: OptionConverter.AminoAcidOptionConverter) (converter': 'b -> Modification ) (xModToSearchMod: Map<string,'b>) (aaStr: string) : BioList<_>  =
+    //    let aaStrL = aaStr.Length
+    //    let rec loop count (modAcc: 'b list) acc (converter:OptionConverter.AminoAcidOptionConverter) (xModToSearchMod: Map<string,'b>)  (aaStr: string) = 
+    //        if count = aaStrL then 
+    //             acc
+    //        else 
+    //             let currentC = aaStr.[count]
+    //             if  (currentC |> Char.IsUpper = true) && modAcc = [] then 
+    //                 loop (count+1) modAcc ((converter currentC).Value::acc) converter xModToSearchMod aaStr 
+    //             elif 
+    //                 ((currentC |> Char.IsUpper) = true) then
+    //                 let modList =
+    //                       List.map converter' modAcc
+    //                 let tmpAa = setModifications modList (converter currentC).Value
+    //                 loop (count+1) [] (tmpAa::acc) converter xModToSearchMod aaStr
+    //             else 
+    //                 match Map.tryFind aaStr.[count.. count+1] xModToSearchMod with
+    //                 | Some modi -> loop (count+1) (modi::modAcc) acc converter xModToSearchMod aaStr
+    //                 | None      -> loop (count+1) modAcc acc converter xModToSearchMod aaStr 
+        
+    //    loop 0 [] [] converter xModToSearchMod aaStr
+
+
+    ///// Generates amino acid sequence of one-letter-code string containing modified AminoAcids indicated by 2 lowercase digits per modification. 
+    //let ofRevModAminoAcidStringWithIsoMod (converter: OptionConverter.AminoAcidOptionConverter) (converter': 'b -> Modification ) (isotopMod: Modification list option) (xModToSearchMod: Map<string,'b>) (aaStr: string) : BioList<_>  =
+    //    let aaStrL = aaStr.Length
+    //    let rec loopWithGlobal count (modAcc: 'b list) acc (converter:OptionConverter.AminoAcidOptionConverter) (xModToSearchMod: Map<string,'b>)  (aaStr: string) = 
+    //        if count = aaStrL then 
+    //             acc
+    //        else 
+    //             let currentC = aaStr.[count]
+    //             if  (currentC |> Char.IsUpper = true) && modAcc = [] then 
+    //                 let currentA = (converter currentC).Value 
+    //                                |> setModifications isotopMod.Value
+    //                 loopWithGlobal (count+1) [] (currentA::acc) converter xModToSearchMod aaStr 
+    //             elif 
+    //                 ((currentC |> Char.IsUpper) = true) then
+    //                 let modList = List.map converter' (modAcc)
+    //                 let tmpAa = setModifications (isotopMod.Value@modList) (converter currentC).Value
+    //                 loopWithGlobal (count+1) [] (tmpAa::acc) converter xModToSearchMod aaStr
+    //             else 
+    //                 match Map.tryFind aaStr.[count.. count+1] xModToSearchMod with
+    //                 | Some modi -> loopWithGlobal (count+1) (modi::modAcc) acc converter xModToSearchMod aaStr
+    //                 | None      -> loopWithGlobal (count+1) modAcc acc converter xModToSearchMod aaStr                 
+    //    match isotopMod.IsSome with
+    //    | true  -> loopWithGlobal 0 [] [] converter xModToSearchMod aaStr
+    //    | false -> ofRevModAminoAcidString converter converter' xModToSearchMod aaStr
+
 (**
 This example shows how the pattern used before can be modified slightly to return a function that only needs one parameter as 
 input to return a LookUpResult list. 
@@ -170,7 +454,7 @@ let n15LookUpPeptideBy inputMass =
         let upperBorder = inputMass+0.5 
         n15DBLookUpBy lowerBorder upperBorder
 
-
+n15LookUpPeptideBy 1000.1
 (**
 This function can be used as shown in the code snippet below. As a inputMass the monoisotopic mass of the peptide *ANLGMEVMHER* can be used as a input. 
 This peptide is encoded by a protein which can be found in the FASTA used for the database creation. Surprisingly the list you obtain will be empty because 
@@ -179,8 +463,6 @@ the database does not contain any peptides in the given massRange.
 
 /// PeptideMass of the peptide known from the peptide *ANLGMEVMHER*. 
 let peptideMass = 1285.590726
-
-n15LookUpPeptideBy 1000.
 
 (**
 The possibility that the database is empty can be ruled out by performing a lookUp with the mass 1000., which should return a list filled with 
@@ -193,7 +475,7 @@ As a first step a new instance of the type SearchDbParams has to be instantiated
 
 /// Returns a instance of the type SearchDbParams
 let paramTestN14 = {
-        Name="Creinhardtii_N14"
+        Name="Creinhardtii_N1422"
         DbFolder            = (__SOURCE_DIRECTORY__ + "/data/")
         FastaPath           = (__SOURCE_DIRECTORY__ + "/data/Chlamy_JGI5_5(Cp_Mp)_truncated.fasta")
         FastaHeaderToName   = id
@@ -207,7 +489,7 @@ let paramTestN14 = {
         MassMode            = SearchDB.MassMode.Monoisotopic
         MassFunction        = massF
         FixedMods           = [] 
-        VariableMods        = [phosphorylation]
+        VariableMods        = [BioFSharp.Mz.SearchDB.Table.oxidation'Met']
         VarModThreshold     = 1
         }
 #time

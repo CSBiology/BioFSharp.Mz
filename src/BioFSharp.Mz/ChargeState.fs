@@ -147,7 +147,7 @@ module ChargeState =
     /// centered around the theoretical interPeakDistance. The standardDeviation is dependent on the used mass spectrometer
     let interPeakDistanceBy (stdDev: float)  (assignedCharge: float) = 
         let calcRndPosition assignedCharge stdDev =
-            1./assignedCharge + (FSharp.Stats.Distributions.Continuous.normal 0. stdDev).Sample()
+            1./ (assignedCharge + (FSharp.Stats.Distributions.Continuous.normal 0. stdDev).Sample())
         calcRndPosition assignedCharge stdDev
 
     /// Creates a random MzIntensityEntityCollection  

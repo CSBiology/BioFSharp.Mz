@@ -12,6 +12,7 @@ open ModificationInfo
 
 module SearchDB =
     
+    open Digestion
     open System.Data.SQLite
 
     type SearchModType =
@@ -26,14 +27,15 @@ module SearchDB =
         Name        : string
         Accession   : string
         Description : string
+        IsBiological: bool
         Composition : string
         Site        : SearchModSite list 
         MType       : SearchModType
         XModCode    : string
         }
     
-    let createSearchModification name accession description composition site mType xModCode = {
-        Name=name; Accession=accession; Description=description; Composition=composition; Site=site; MType=mType; XModCode=xModCode }
+    let createSearchModification name accession description isBiological composition site mType xModCode = {
+        Name=name; Accession=accession; Description=description; IsBiological=isBiological ; Composition=composition; Site=site; MType=mType; XModCode=xModCode }
     
     type SearchInfoIsotopic = {
         Name        : string
@@ -44,7 +46,7 @@ module SearchDB =
         Name=name; SourceEl=sourceEl; TargetEl=targetEl  }
                       
     let createIsotopicMod (infoIsotopic: SearchInfoIsotopic) = 
-        createModification infoIsotopic.Name ModLocation.Isotopic (fun f -> Formula.lableElement f infoIsotopic.SourceEl infoIsotopic.TargetEl)
+        createModification infoIsotopic.Name true ModLocation.Isotopic (fun f -> Formula.lableElement f infoIsotopic.SourceEl infoIsotopic.TargetEl)
         
     let getModBy (smodi:SearchModification) = 
         let modLoc = 
@@ -52,8 +54,8 @@ module SearchDB =
               | Any modLoc'           -> modLoc'
               | Specific (aa,modLoc') -> modLoc' 
         match smodi.MType with
-        | SearchModType.Plus  -> createModificationWithAdd smodi.Name modLoc smodi.Composition
-        | SearchModType.Minus -> createModificationWithSubstract smodi.Name modLoc smodi.Composition                             
+        | SearchModType.Plus  -> createModificationWithAdd smodi.Name smodi.IsBiological modLoc smodi.Composition
+        | SearchModType.Minus -> createModificationWithSubstract smodi.Name smodi.IsBiological modLoc smodi.Composition                             
     
     type MassMode = 
         | Average
@@ -72,7 +74,7 @@ module SearchDB =
         DbFolder            : string
         FastaPath           : string
         FastaHeaderToName   : string -> string
-        Protease            : Digestion.Protease
+        Protease            : Protease
         MinMissedCleavages  : int
         MaxMissedCleavages  : int
         MaxMass             : float
@@ -148,30 +150,28 @@ module SearchDB =
 
 
     // Record for a peptide sequence and its precalculated mass calcualted mass
-    type PeptideWithMass<'a> = {
+    type PeptideWithFeature<'a,'b> = {
+        GlobalMod: int
         Sequence : 'a
-        Mass     : float
+        Feature  : 'b
     }
 
     /// Creates PeptideWithMass record
-    let createPeptideWithMass sequence mass = 
-        {Sequence=sequence; Mass=mass}
+    let createPeptideWithFeature globalMod sequence feature = 
+        {GlobalMod=globalMod; Sequence=sequence; Feature=feature}
 
     // Record for a peptide sequence and a container for all modified peptides
     type PeptideContainer = {
         PeptideId    : int    
         Sequence     : string
-        GlobalMod    : int
-
         MissCleavageStart : int
         MissCleavageEnd   : int
-        MissCleavageCount : int
-        
-        Container    : PeptideWithMass<string> list 
+        MissCleavageCount : int      
+        Container    : PeptideWithFeature<string,float> list 
     }
 
-    let createPeptideContainer peptideId sequence globalMod missCleavageStart missCleavageEnd missCleavageCount container =
-        {PeptideId=peptideId; Sequence=sequence; GlobalMod=globalMod; MissCleavageStart=missCleavageStart; 
+    let createPeptideContainer peptideId sequence  missCleavageStart missCleavageEnd missCleavageCount container =
+        {PeptideId=peptideId; Sequence=sequence; MissCleavageStart=missCleavageStart; 
             MissCleavageEnd=missCleavageEnd; MissCleavageCount=missCleavageCount; Container=container;}
 
 
@@ -190,13 +190,13 @@ module SearchDB =
         PepSequenceID       : int        
         Mass                : float 
         RoundedMass         : int64
-        RevStringSequence   : string
+        StringSequence      : string
         BioSequence         : 'a list
         GlobalMod           : int                
     }
 
-    let createLookUpResult modSequenceId pepSequenceId mass roundedMass revStringSequence bioSequence globalMod =
-        {ModSequenceID=modSequenceId ;PepSequenceID = pepSequenceId; Mass = mass;RoundedMass = roundedMass; RevStringSequence=revStringSequence; BioSequence=bioSequence; GlobalMod=globalMod }
+    let createLookUpResult modSequenceId pepSequenceId mass roundedMass stringSequence bioSequence globalMod =
+        {ModSequenceID=modSequenceId ;PepSequenceID = pepSequenceId; Mass = mass;RoundedMass = roundedMass; StringSequence=stringSequence; BioSequence=bioSequence; GlobalMod=globalMod }
     
 
     module Db =
@@ -648,8 +648,8 @@ module SearchDB =
                     match reader.Read() with
                     | true ->   (reader.GetInt32(0), reader.GetString(12), reader.GetString(13))
                                 |> fun (id,fixMods,varMods) -> Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(fixMods)@Newtonsoft.Json.JsonConvert.DeserializeObject<SearchModification list>(varMods) 
-                                |> Some
-                    | false -> None
+                    | false -> []
+                                
                 )
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -876,19 +876,24 @@ module SearchDB =
              sdbParams.MinMissedCleavages sdbParams.MaxMissedCleavages sdbParams.MaxMass sdbParams.MinPepLength sdbParams.MaxPepLength (getJsonStringOf sdbParams.IsotopicMod) (getJsonStringOf sdbParams.MassMode)
                     (getJsonStringOf sdbParams.FixedMods) (getJsonStringOf sdbParams.VariableMods) sdbParams.VarModThreshold  
         
+
+        /// 
+        let xModToSearchModifications sMds = 
+            match sMds with
+            | [] -> 
+                    sMds 
+                    |> List.map (fun x -> x.XModCode , x)
+                    |> Map.ofList 
+            | _  -> Map.empty
+
         /// Builds xModToSearchMod Map from DB by given SearchDbParams
-        let xModToSearchMod cn (sdbParams:SearchDbParams) =       
+        let xModOfSearchDbParams cn (sdbParams:SearchDbParams) =       
             let allSMods =
                 SQLiteQuery.prepareSelectSearchModsbyParams cn sdbParams.FastaPath sdbParams.Protease.Name sdbParams.MinMissedCleavages 
                     sdbParams.MaxMissedCleavages sdbParams.MaxMass sdbParams.MinPepLength sdbParams.MaxPepLength (getJsonStringOf sdbParams.IsotopicMod) (getJsonStringOf sdbParams.MassMode)
                     (getJsonStringOf sdbParams.FixedMods) (getJsonStringOf sdbParams.VariableMods) sdbParams.VarModThreshold 
-            match allSMods with
-            | Some allSMods -> 
-                allSMods 
-                |> List.map (fun x -> x.XModCode , x)
-                |> Map.ofList 
-            | _                -> Map.empty
-            
+            xModToSearchModifications allSMods
+
         /// Returns true if a db exists with the same parameter content
         let isExistsBy (sdbParams:SearchDbParams) =       
             let fileName = getNameOf sdbParams
@@ -946,15 +951,15 @@ module SearchDB =
                                                 pepContainer.MissCleavageEnd pepContainer.MissCleavageCount|>ignore
                                             pepContainer.Container
                                             |> List.iter (fun modPep -> 
-                                                            insertModSequence (pepContainer.PeptideId) modPep.Mass ((Convert.ToInt64(modPep.Mass*1000000.)))
-                                                                modPep.Sequence pepContainer.GlobalMod |> ignore
+                                                            insertModSequence (pepContainer.PeptideId) modPep.Feature ((Convert.ToInt64(modPep.Feature*1000000.)))
+                                                                modPep.Sequence modPep.GlobalMod |> ignore
                                                             )  
 
                                     | _  -> insertCleavageIndex protContainer.ProteinId (selectPepSequenceBySequence pepContainer.Sequence) 
                                                 pepContainer.MissCleavageStart pepContainer.MissCleavageEnd pepContainer.MissCleavageCount |>ignore                         
                                 )   
 
-                    | _ -> printfn "Protein is already in the database" |>ignore
+                    | _ ->                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       "Protein is already in the database" |>ignore
                 )
 
             SQLiteQuery.setPepSequenceIDIndexOnCleavageIndex cn |> ignore 
@@ -971,21 +976,25 @@ module SearchDB =
         open BioFSharp    
         open BioFSharp.AminoAcids
         open BioFSharp.ModificationInfo
-    
+
         open Db
 
         /// Type abreviation
         type ModLookUpFunc = AminoAcid -> Modification list option
 
         type ModLookUp = {
-            ResidualFixed :            ModLookUpFunc
-            NTermAndResidualFixed :    ModLookUpFunc
-            CTermAndResidualFixed :    ModLookUpFunc
-            ResidualVariable :         ModLookUpFunc
-            NTermAndResidualVariable : ModLookUpFunc
-            CTermAndResidualVariable : ModLookUpFunc
+            ResidualFixed                : ModLookUpFunc
+            NTermAndResidualFixed        : ModLookUpFunc
+            CTermAndResidualFixed        : ModLookUpFunc
+            ProtNTermAndResidualFixed    : ModLookUpFunc
+            ProtCTermAndResidualFixed    : ModLookUpFunc
+            ResidualVariable             : ModLookUpFunc
+            NTermAndResidualVariable     : ModLookUpFunc
+            CTermAndResidualVariable     : ModLookUpFunc
+            ProtNTermAndResidualVariable : ModLookUpFunc
+            ProtCTermAndResidualVariable : ModLookUpFunc
             Total: string -> string option
-            Isotopic : GlobalModificationInfo.GlobalModificator option
+            Isotopic : (GlobalModificationInfo.GlobalAAModificator*GlobalModificationInfo.GlobalModModificator) option
             }
 
         /// Flag indicates if potential modification is fixed
@@ -1010,8 +1019,8 @@ module SearchDB =
             ///Creates AminoAcid Modification tuple. Concerns MType of the Searchmodification  
             let modificationOf (searchMod : SearchModification) modLocation =
                 match searchMod.MType with
-                | SearchModType.Plus  -> createModificationWithAdd searchMod.Name modLocation searchMod.Composition
-                | SearchModType.Minus -> createModificationWithSubstract searchMod.Name modLocation searchMod.Composition
+                | SearchModType.Plus  -> createModificationWithAdd searchMod.Name searchMod.IsBiological modLocation searchMod.Composition
+                | SearchModType.Minus -> createModificationWithSubstract searchMod.Name searchMod.IsBiological modLocation searchMod.Composition
                        
             ///Matches elements of the SearchModification.Site with the SearchModSites Any or Specific; Returns tuple of AminoAcids and Modifications
             searchModification.Site 
@@ -1036,21 +1045,21 @@ module SearchDB =
                 |> List.filter (logexp: _*Modification -> bool)
                 |> Map.compose
 
-            let aminoParser (c:char) : AminoAcid =
-                match AminoAcids.charToParsedAminoAcidChar c with
-                | AminoAcids.ParsedAminoAcidChar.StandardCodes code -> code
-                | AminoAcids.ParsedAminoAcidChar.AmbiguityCodes code -> code
-                | _ -> failwithf "Wrong Format in global mod string."
-
-
             ///Logexp that returns true if ModLocation of modified AminoAcid equals Residual 
             let residual (_,modi) =  ModLocation.Residual.Equals(modi.Location)
             ///Logexp that returns true if ModLocation of modified AminoAcid equals Residual, Nterm or ProteinNterm 
             let nTermAndResidual (_,modi) = 
-                ModLocation.Nterm.Equals(modi.Location)||ModLocation.ProteinNterm.Equals(modi.Location) || ModLocation.Residual.Equals(modi.Location)
+                ModLocation.Nterm.Equals(modi.Location) (*|| ModLocation.ProteinNterm.Equals(modi.Location)*) || ModLocation.Residual.Equals(modi.Location)
             ///Logexp that returns true if ModLocation of modified AminoAcid equals Residual, Cterm or ProteinCterm  
             let cTermAndResidual (_,modi) = 
-                ModLocation.Cterm.Equals(modi.Location)||ModLocation.ProteinCterm.Equals(modi.Location) || ModLocation.Residual.Equals(modi.Location)
+                ModLocation.Cterm.Equals(modi.Location) (*|| ModLocation.ProteinCterm.Equals(modi.Location)*) || ModLocation.Residual.Equals(modi.Location)
+            ///Logexp that returns true if ModLocation of modified AminoAcid equals Residual, Nterm or ProteinNterm 
+            let protNTermAndResidual (_,modi) = 
+                ModLocation.ProteinNterm.Equals(modi.Location) //|| ModLocation.Residual.Equals(modi.Location)
+            ///Logexp that returns true if ModLocation of modified AminoAcid equals Residual, Cterm or ProteinCterm  
+            let protCTermAndResidual (_,modi) = 
+                ModLocation.ProteinCterm.Equals(modi.Location) //|| ModLocation.Residual.Equals(modi.Location)
+                
             {                                                      
                 ResidualFixed=
                     let lookUpR = createAndFilterBy residual dbParams.FixedMods
@@ -1060,7 +1069,13 @@ module SearchDB =
                     fun aa -> Map.tryFind aa lookUpNR      
                 CTermAndResidualFixed=
                     let lookUpCR = createAndFilterBy cTermAndResidual dbParams.FixedMods
-                    fun aa -> Map.tryFind aa lookUpCR     
+                    fun aa -> Map.tryFind aa lookUpCR   
+                ProtNTermAndResidualFixed=
+                    let lookUpNR = createAndFilterBy protNTermAndResidual dbParams.FixedMods
+                    fun aa -> Map.tryFind aa lookUpNR      
+                ProtCTermAndResidualFixed=
+                    let lookUpCR = createAndFilterBy protCTermAndResidual dbParams.FixedMods
+                    fun aa -> Map.tryFind aa lookUpCR                         
                 ResidualVariable =
                     let lookUpR = createAndFilterBy residual dbParams.VariableMods
                     fun aa -> Map.tryFind aa lookUpR     
@@ -1069,6 +1084,12 @@ module SearchDB =
                     fun aa -> Map.tryFind aa lookUpNR      
                 CTermAndResidualVariable =
                     let lookUpCR = createAndFilterBy cTermAndResidual dbParams.VariableMods
+                    fun aa -> Map.tryFind aa lookUpCR   
+                ProtNTermAndResidualVariable =
+                    let lookUpNR = createAndFilterBy protNTermAndResidual dbParams.VariableMods
+                    fun aa -> Map.tryFind aa lookUpNR      
+                ProtCTermAndResidualVariable =
+                    let lookUpCR = createAndFilterBy protCTermAndResidual dbParams.VariableMods
                     fun aa -> Map.tryFind aa lookUpCR   
                 Total =
                     let lookupT = 
@@ -1081,9 +1102,12 @@ module SearchDB =
                         let modiL = 
                             dbParams.IsotopicMod 
                             |> List.map createIsotopicMod 
-                        Some (GlobalModificationInfo.initGlobalModification dbParams.MassFunction modiL)
+                        Some (GlobalModificationInfo.initGlobalModificationDeltaOfAA dbParams.MassFunction modiL,GlobalModificationInfo.initGlobalModificationDeltaOfMod dbParams.MassFunction modiL )
                     else None
              }
+
+
+
 
         ///Returns modified or unmodified AminoAcid depending on the matching expression in a AminoAcidWithFlag struct
         ///The boolean value "false" is used to state that the Modification is fixed    
@@ -1093,78 +1117,210 @@ module SearchDB =
             | None -> aa     
 
 
+        let mapModLocation loc = 
+            match loc with 
+            | ModLocation.Residual      -> ModLocation.Residual 
+            | ModLocation.Nterm         -> ModLocation.Nterm
+            | ModLocation.ProteinNterm  -> ModLocation.Nterm
+            | ModLocation.Cterm         -> ModLocation.Cterm
+            | ModLocation.ProteinCterm  -> ModLocation.Cterm
+            | ModLocation.Isotopic      -> ModLocation.Isotopic
+            
+
         ///Returns modified or unmodified AminoAcid depending on the matching expression in a AminoAcidWithFlag struct
         ///The boolean value "false" is used to state that the Modification is fixed    
         let setVarModByLookUp (modLookUpFunc:ModLookUpFunc) (aa: AminoAcidWithFlag) =
-            match modLookUpFunc aa.AminoAcid with
-            | Some modiList -> 
-                        let tmp = 
-                            modiList 
-                            |> List.map (fun modi -> setVarModifiedFlagOf (AminoAcids.setModification modi aa.AminoAcid))               
-                        aa::tmp
-            | None -> [aa] 
-                                                    
+            match aa.AminoAcid with
+            | Mod(aa',presentMods) -> 
+                let occupiedModLocs =
+                    presentMods
+                    |> List.map (fun modi -> mapModLocation modi.Location )
+                    |> Set.ofList
+                match modLookUpFunc aa' with 
+                | Some modiList -> 
+                    let modsAtDifferentLocsCombined = 
+                        modiList 
+                        |> List.groupBy (fun x -> mapModLocation x.Location) 
+                        |> List.map snd                        
+                        |> FSharpAux.List.powerSetOf 
+                        |> List.map FSharpAux.List.drawExaustively 
+                        |> List.concat
+                    let tmp = 
+                        modsAtDifferentLocsCombined    
+                        |> List.choose (fun mods -> 
+                                            match mods |> List.exists (fun modi -> occupiedModLocs.Contains(mapModLocation modi.Location)) with 
+                                            | true  -> None
+                                            | false -> Some (setVarModifiedFlagOf (AminoAcids.setModifications mods aa.AminoAcid))
+                                       )               
+                    aa::tmp
+                | None -> 
+                    [aa]
+            | _                  ->
+                match modLookUpFunc aa.AminoAcid with 
+                | Some modiList -> 
+                    let modsAtDifferentLocsCombined = 
+                        modiList 
+                        |> List.groupBy (fun x -> mapModLocation x.Location) 
+                        |> List.map snd                        
+                        |> FSharpAux.List.powerSetOf 
+                        |> List.map FSharpAux.List.drawExaustively  
+                        |> List.concat
+                    let tmp = 
+                        modsAtDifferentLocsCombined    
+                        |> List.map (fun mods -> setVarModifiedFlagOf (AminoAcids.setModifications mods aa.AminoAcid))
+                    aa::tmp
+                                                   
+                | None -> 
+                    [aa]
+                                                              
+        
+        let addProteinTerminalModifications minPos maxPos (modLookUp:ModLookUp) (digPep: DigestedPeptide<'a>) =    
+            ///
+            let modifyNTerminal (aal: AminoAcid list) = 
+                match aal with 
+                | []      -> []
+                | h::tail -> 
+                    AminoAcidWithFlag h 
+                    |> setFixModByLookUp modLookUp.ProtNTermAndResidualFixed 
+                    |> setVarModByLookUp modLookUp.ProtNTermAndResidualVariable  
+                    |> List.map (fun item -> (item.AminoAcid)::tail)                              
+            ///
+            let modifyCTerminal (aal: AminoAcid list) = 
+                let rec loop acc (aal: AminoAcid list) =
+                    match aal with 
+                    | h::[]   -> 
+                        AminoAcidWithFlag h 
+                        |> setFixModByLookUp modLookUp.ProtCTermAndResidualFixed 
+                        |> setVarModByLookUp modLookUp.ProtCTermAndResidualVariable
+                        |> List.map (fun item -> ((item.AminoAcid)::acc) |> List.rev )
+                    | h::tail -> loop (h::acc) tail
 
+                loop [] aal             
+
+            if digPep.CleavageStart = minPos && digPep.CleavageEnd = maxPos then
+                let modifiedPeps = 
+                    digPep.PepSequence
+                    |> modifyNTerminal
+                    |> List.collect modifyCTerminal
+                    |> List.map (fun modS -> {digPep with PepSequence = modS})
+                modifiedPeps
+            elif digPep.CleavageStart = minPos then
+                let modifiedPeps = 
+                    digPep.PepSequence
+                    |> modifyNTerminal
+                    |> List.map (fun modS -> {digPep with PepSequence = modS})
+                modifiedPeps
+            elif digPep.CleavageEnd = maxPos then
+                let modifiedPeps = 
+                    digPep.PepSequence
+                    |> modifyCTerminal
+                    |> List.map (fun modS -> {digPep with PepSequence = modS})
+                modifiedPeps 
+            else
+                [digPep]
+                                    
         /// Returns a list of all possible modified petide sequences and its masses according to the given modification-lookUp.
         /// It uses the given bioitem -> mass function and a function to aggregate the sequence.
         let combine (modLookUp:ModLookUp) threshold (massfunction:IBioItem -> float) seqfunction state (aal: AminoAcid list) =
-            let rec loop c (massAcc:float) acc (aal: AminoAcid list) =
+            let rec loop c (modAcc:Modification list) seqAcc (aal: AminoAcid list) =
                 match c with
                 | c when c = threshold -> 
                     match aal with
                     | h::tail -> 
                         match tail with 
                         // Last amino acid => set NTermAndResidualFixed
-                        | [] -> setFixModByLookUp modLookUp.NTermAndResidualFixed (AminoAcidWithFlag h) 
+                        | [] -> setFixModByLookUp modLookUp.CTermAndResidualFixed (AminoAcidWithFlag h) 
                         // all other amino acid => set ResidualFixed
                         | _  -> setFixModByLookUp modLookUp.ResidualFixed  (AminoAcidWithFlag h)
                         |> (fun item ->
                                 match item.AminoAcid with
-                                | Mod (a,m) -> let currentModMass = m |> List.fold (fun s x -> s + massfunction x) 0.0
-                                               loop c (massAcc + currentModMass) (seqfunction acc item.AminoAcid) tail
-                                | a         -> loop c massAcc  (seqfunction acc item.AminoAcid) tail  
+                                | Mod (a,m) -> loop c (m@modAcc) (seqfunction seqAcc item.AminoAcid) tail
+                                | a         -> loop c modAcc  (seqfunction seqAcc item.AminoAcid) tail  
                             )
                 
-                    | [] -> [createPeptideWithMass acc massAcc]
-  
-                                     
+                    | [] -> [createPeptideWithFeature 0 seqAcc modAcc]
                 | c -> 
                     match aal with
                     | h::tail -> 
                         match tail with
                         | [] -> 
                             AminoAcidWithFlag h 
-                            |> setFixModByLookUp modLookUp.NTermAndResidualFixed 
-                            |> setVarModByLookUp modLookUp.NTermAndResidualVariable 
+                            |> setFixModByLookUp modLookUp.CTermAndResidualFixed 
+                            |> setVarModByLookUp modLookUp.CTermAndResidualVariable 
                         | _  -> 
                             AminoAcidWithFlag h
                             |> setFixModByLookUp modLookUp.ResidualFixed  
                             |> setVarModByLookUp modLookUp.ResidualVariable
                         |> List.collect (fun item ->
+                                                
                                                 match (isVarModified item),item.AminoAcid with
-                                                | true,Mod (a,m)   -> 
-                                                    let currentModMass = m |> List.fold (fun s x -> s + massfunction x) 0.0
-                                                    loop (c+1) (massAcc + currentModMass) (seqfunction acc item.AminoAcid) tail                                       
-                                                | false, Mod (a,m) -> 
-                                                    let currentModMass = m |> List.fold (fun s x -> s + massfunction x) 0.0
-                                                    loop c (massAcc + currentModMass) (seqfunction acc item.AminoAcid) tail
-                                                | false, a         -> 
-                                                    loop c massAcc (seqfunction acc item.AminoAcid) tail 
+                                                | true,Mod (a,m)   -> loop (c+1) (m@modAcc) (seqfunction seqAcc item.AminoAcid) tail                                       
+                                                | false, Mod (a,m) -> loop c (m@modAcc) (seqfunction seqAcc item.AminoAcid) tail
+                                                | false, a         -> loop c modAcc (seqfunction seqAcc item.AminoAcid) tail 
                                                 | true,_ -> failwith "Matching case impossible: Check AminoAcidWithFlag"
                                             )                   
                                                    
-                    | [] ->  [createPeptideWithMass acc massAcc]   
-
+                    | [] ->  [createPeptideWithFeature 0 seqAcc modAcc]   
             let massOfPeptide =  
-                if modLookUp.Isotopic.IsSome then
                     aal
-                    |> List.fold (fun s x -> s + (massfunction x) + (modLookUp.Isotopic.Value x)) (massfunction ModificationInfo.Table.H2O)//add water
-                else 
+                    |> List.fold (fun acc x -> 
+                                    match x with
+                                    | Mod(a,_) ->
+                                        acc + massfunction a
+                                    | a -> 
+                                        acc + massfunction a
+                                 ) (massfunction ModificationInfo.Table.H2O) //add water
+            let sequencesNoGlobalMod = 
+                match aal with
+                | [] -> [createPeptideWithFeature 0 "" []]   
+                | h::tail -> 
+                        AminoAcidWithFlag h 
+                        |> setFixModByLookUp modLookUp.NTermAndResidualFixed 
+                        |> setVarModByLookUp modLookUp.NTermAndResidualVariable 
+                        |> List.collect (fun item ->
+                                            match (isVarModified item),item.AminoAcid with
+                                            | true,Mod (a,m)   -> 
+                                                loop (1) (m) (seqfunction "" item.AminoAcid) tail                                       
+                                            | false, Mod (a,m) -> 
+                                                loop 0 (m) (seqfunction "" item.AminoAcid) tail
+                                            | false, a         -> 
+                                                loop 0 [] (seqfunction "" item.AminoAcid) tail 
+                                            | true,_ -> failwith "Matching case impossible: Check AminoAcidWithFlag"
+                                        ) 
+            match modLookUp.Isotopic with
+            | None   -> 
+                sequencesNoGlobalMod
+                |> List.map (fun x -> 
+                                let mass = x.Feature |> List.fold (fun s x -> s + (massfunction x)) massOfPeptide
+                                createPeptideWithFeature x.GlobalMod x.Sequence mass
+                            )
+            | Some (globalAAModifier,globalModModifier) ->  
+                let massWithGlobalMod =     
                     aal
-                    |> List.fold (fun s x -> s + massfunction x) (massfunction ModificationInfo.Table.H2O) //add water
-            loop 0 massOfPeptide state (aal |> List.rev)
-
-
+                    |> List.fold (fun acc x -> 
+                                    match x with
+                                    | Mod(a,_) ->
+                                        acc + massfunction a + (globalAAModifier a)
+                                    | a -> 
+                                        acc + massfunction a + (globalAAModifier a)
+                                 ) (massfunction ModificationInfo.Table.H2O) 
+                let sequencesWithMass =
+                    sequencesNoGlobalMod
+                    |> List.map (fun x -> 
+                                    let mass = x.Feature |> List.fold (fun s x -> s + (massfunction x)) massOfPeptide
+                                    createPeptideWithFeature x.GlobalMod x.Sequence mass
+                                )    
+                let sequencesGlobalModWithMass =
+                    sequencesNoGlobalMod
+                    |> List.map (fun x -> 
+                                    let mass = 
+                                        x.Feature 
+                                        |> List.fold (fun s x -> 
+                                                        s + (massfunction x) + (globalModModifier x) 
+                                                      ) massWithGlobalMod
+                                    createPeptideWithFeature 1 x.Sequence mass
+                                )
+                List.append sequencesWithMass sequencesGlobalModWithMass
 
         /// Returns a ModString representation. 
         let ToModStringBy (xModLookUp:string->string option) (aa: AminoAcid) =
@@ -1172,7 +1328,7 @@ module SearchDB =
             | AminoAcids.Mod (aa, mds) ->  
                                     mds
                                     |> List.fold (fun acc (md:Modification) -> match xModLookUp md.Name with
-                                                                                | Some x -> x + acc 
+                                                                                | Some x -> "[" + x + "]" + acc 
                                                                                 | None -> failwithf "Failed"                                                                                         
                                                                                 ) "" 
                                     |> (fun x -> x + ((BioItem.symbol aa).ToString()))
@@ -1187,28 +1343,93 @@ module SearchDB =
             let seqfunction = (fun state amino -> state + (toString amino))
             combine modLookUp threshold massfunction seqfunction "" aal
     
-
-
-
-
+        ///  
+        let getModSequencesOf (peptideId:ref<int>) (modLookUp:ModLookUp) threshold (massfunction:IBioItem -> float) (digPeps:DigestedPeptide<'a> []) =
+            if Array.isEmpty digPeps then [||]
+            else
+            let minPos = 0 
+            let maxPos = (digPeps |> Array.maxBy (fun x -> x.CleavageEnd)).CleavageEnd
+            digPeps
+            |> Array.map (fun pep ->
+                                let container = 
+                                    pep
+                                    |> addProteinTerminalModifications minPos maxPos modLookUp
+                                    |> List.collect (fun pep -> combineToModString modLookUp threshold massfunction pep.PepSequence)
+                                peptideId.Value <- peptideId.Value + 1 
+                                createPeptideContainer (peptideId.Value) (BioList.toString pep.PepSequence) pep.CleavageStart pep.CleavageEnd pep.MissCleavages container
+                            )
    
     // --------------------------------------------------------------------------------
     // PeptideLookUp continues
     
+    /// Creates a mapping from the XModCode of a modification to the modification itself.
+    let xModToMods (sMds:SearchModification list) = 
+        List.map (fun md -> md.XModCode, getModBy md) sMds
+        |> Map.ofList
+
+    /// Generates amino acid sequence of one-letter-code string containing modified AminoAcids indicated by 2 lowercase digits per modification. 
+    let initOfModAminoAcidString (isotopMods: SearchInfoIsotopic list) (fixedAndVarMods: SearchModification list) (globalMod:int) (aaStr: string) : BioFSharp.BioList.BioList<AminoAcid>  =
+        let isotopMods = List.map createIsotopicMod isotopMods
+        let xModToMod  = xModToMods fixedAndVarMods
+        ///
+        let setGlobalMods globalMod isotopMods aaAcc = 
+            if globalMod = 0 then aaAcc
+            else AminoAcids.setModifications isotopMods aaAcc
+        ///
+        let rec accumulateMods count stringAcc aaAcc (aaStr: string) = 
+            if count < 0 then 
+                aaAcc, count
+            else
+            let currentC = aaStr.[count]
+            if Char.IsUpper currentC then 
+                aaAcc, count
+            elif currentC = ']' then
+                accumulateMods (count-1) stringAcc aaAcc aaStr 
+            elif currentC = '[' then
+                match Map.tryFind stringAcc xModToMod with
+                | Some md -> 
+                    let tmp = AminoAcids.setModification md aaAcc 
+                    accumulateMods (count-1) "" tmp aaStr
+                | None ->
+                    accumulateMods (count-1) "" aaAcc aaStr
+            else
+                accumulateMods (count-1) (currentC.ToString() + stringAcc) aaAcc aaStr
+        ///
+        let rec loop count (aaAcc:AminoAcid option) seqAcc (aaStr: string) = 
+            match count with
+            | c when c < 0 ->
+                match aaAcc with
+                | Some aaAcc -> 
+                    let tmp = setGlobalMods globalMod isotopMods aaAcc
+                    tmp::seqAcc
+                | None -> 
+                    seqAcc
+            | _ -> 
+                let currentC = aaStr.[count]
+                match Char.IsUpper currentC with
+                | true ->
+                    let aa = BioItemsConverter.OptionConverter.charToOptionAminoAcid currentC 
+                    match aaAcc with
+                    | Some aaAcc -> 
+                        let tmp = setGlobalMods globalMod isotopMods aaAcc 
+                        loop (count-1) aa (tmp::seqAcc) aaStr            
+                    | None ->
+                        loop (count-1) aa (seqAcc) aaStr            
+                | false -> 
+                    match aaAcc with
+                    | None    ->
+                        loop (count-1) None seqAcc aaStr
+                    | Some aa -> 
+                        let mdAA, count = accumulateMods (count-1) "" aa aaStr
+                        let tmp = setGlobalMods globalMod isotopMods mdAA
+                        loop count None (tmp::seqAcc) aaStr
+        loop (aaStr.Length-1) None [] aaStr    
+        
     /// Creates a LookUpResult out of a entry in the ModSequence table
-    let createLookUpResultBy xModLookUp (sdbParams:SearchDbParams) (modSID,pepID,realMass,roundMass,seqs,gMod)  =
-        if gMod = 1 then
-            let globMod = sdbParams.IsotopicMod 
-                          |> List.map createIsotopicMod    
-            let bSeq = 
-                BioList.ofRevModAminoAcidStringWithIsoMod BioItemsConverter.OptionConverter.charToOptionAminoAcid getModBy (Some globMod) xModLookUp seqs  
+    let createLookUpResultBy parseAAString (modSID,pepID,realMass,roundMass,seqs,gMod)  =
+            let bSeq = parseAAString gMod seqs
             createLookUpResult modSID pepID realMass roundMass seqs bSeq gMod   
-        else 
-            let bSeq = 
-                BioList.ofRevModAminoAcidString BioItemsConverter.OptionConverter.charToOptionAminoAcid getModBy xModLookUp seqs  
-            createLookUpResult modSID pepID realMass roundMass seqs bSeq gMod   
-    
-    
+                    
      /// Returns a list of proteins retrieved by PepsequenceID
     let getProteinLookUpFromFileBy sdbParams = 
         let dbFilePath = Db.getNameOf sdbParams
@@ -1230,18 +1451,15 @@ module SearchDB =
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
         let tr = cn.BeginTransaction()
-        let xModLookUp = Db.xModToSearchMod cn sdbParams
+        let parseAAString = initOfModAminoAcidString sdbParams.IsotopicMod (sdbParams.FixedMods@sdbParams.VariableMods)
         let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRange cn tr
         (fun lowerMass upperMass  -> 
                 let lowerMass' = Convert.ToInt64(lowerMass*1000000.)
                 let upperMass' = Convert.ToInt64(upperMass*1000000.)
                 selectModsequenceByMassRange lowerMass' upperMass'
-                |> List.map (createLookUpResultBy xModLookUp sdbParams)
-                // selectModsequenceByMassRange lowerMass' upperMass', xModLookUp
-                //|> List.map (createLookUpResultBy xModLookUp sdbParams)
+                |> List.map (createLookUpResultBy parseAAString)
         )
-            
-            
+                       
     /// Returns a LookUpResult list 
     let getPeptideLookUpBy (sdbParams:SearchDbParams) =
         // Check existens by param
@@ -1255,7 +1473,6 @@ module SearchDB =
             // prepares LookUpMaps of modLookUp based on the dbParams
             let modLookUp = ModCombinator.modLookUpOf sdbParams
             // Set name of global modification
-            let globalMod = if modLookUp.Isotopic.IsNone then 0 else 1
             let connectionString = sprintf "Data Source=%s;Version=3" dbFileName
             let cn = new SQLiteConnection(connectionString)
             cn.Open()
@@ -1265,7 +1482,7 @@ module SearchDB =
             let fasta = 
                 BioFSharp.IO.FastA.fromFile (BioArray.ofAminoAcidString) sdbParams.FastaPath                
             // Digest
-            let mutable peptideId = 0 
+            let peptideId = ref 1 
             fasta
             |> Seq.mapi 
                 (fun i fastaItem ->
@@ -1274,16 +1491,11 @@ module SearchDB =
                         Digestion.BioArray.digest sdbParams.Protease proteinId fastaItem.Sequence
                         |> Digestion.BioArray.concernMissCleavages sdbParams.MinMissedCleavages sdbParams.MaxMissedCleavages
                         |> Array.filter (fun x -> 
-                                            let cleavageRange = x.MissCleavageEnd - x.MissCleavageStart
+                                            let cleavageRange = x.CleavageEnd - x.CleavageStart
                                             cleavageRange > sdbParams.MinPepLength && cleavageRange < sdbParams.MaxPepLength 
                                         )
-                        |> Array.map (fun pep ->
-                                            let container = 
-                                                ModCombinator.combineToModString modLookUp sdbParams.VarModThreshold sdbParams.MassFunction pep.PepSequence
-                                            peptideId <- peptideId + 1
-                                            createPeptideContainer (peptideId) (BioList.toString pep.PepSequence) globalMod pep.MissCleavageStart pep.MissCleavageEnd pep.MissCleavages container
-                                        )
-                        
+                        |> fun x -> x
+                        |> (ModCombinator.getModSequencesOf peptideId modLookUp sdbParams.VarModThreshold sdbParams.MassFunction)                     
                     createProteinContainer 
                         proteinId 
                             (sdbParams.FastaHeaderToName fastaItem.Header) 
@@ -1366,18 +1578,18 @@ module SearchDB =
     module Table =
         
         let phosphorylation'Ser'Thr'Tyr' =
-            createSearchModification "Phosphorylation'Ser'Thr'Tyr'" "21" "Addition of a phosphate group to the AA residue" "HO3P"
+            createSearchModification "Phosphorylation'Ser'Thr'Tyr'" "21" "Addition of a phosphate group to the AA residue" true "HO3P"
                 [Specific(Ser,ModLocation.Residual); Specific(Thr,ModLocation.Residual); Specific(Tyr,ModLocation.Residual)] SearchModType.Plus "ph"
     
         let acetylation'ProtNTerm' =
-            createSearchModification "Acetyl(Protein N-Term)" "21" "Acetylation of the protein N-terminus" "C2H2O"
+            createSearchModification "Acetyl(Protein N-Term)" "1" "Acetylation of the protein N-terminus" true "C2H2O"
                 [Any(ModLocation.ProteinNterm)] SearchModType.Plus "ac"
 
         let oxidation'Met' =
-            createSearchModification "Oxidation'Met'" "35" "Oxidation" "O"
-                [Specific(Met,ModLocation.Residual)] SearchModType.Plus "ox"
+            createSearchModification "Oxidation'Met'" "35" "Oxidation" true "O"
+                [Specific(Met,ModLocation.Residual);] SearchModType.Plus "ox"
 
         let carbamidomethyl'Cys' =
-            createSearchModification "Carbamidomethyl'Cys'" "21" "Iodoacetamide derivative" "C2H3NO"
+            createSearchModification "Carbamidomethyl'Cys'" "4" "Iodoacetamide derivative" false "C2H3NO"
                 [Specific(Cys,ModLocation.Residual)] SearchModType.Plus "ca"
                                         
