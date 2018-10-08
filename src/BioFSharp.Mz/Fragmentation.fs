@@ -40,69 +40,70 @@ module Fragmentation =
     
     [<AutoOpen>]
     module private BioList =
-
+        
         open BioFSharp.Mz.Peaks
         open BioFSharp.Mz.Ions
-
+        open ModificationInfo
+        open ModificationInfo.Table
         ///
-        let private calcBorYIonFragMass (massfunction:Formula.Formula -> float) acc aa = 
-            acc + massfunction (AminoAcids.formula aa)
+        let private calcBorYIonFragMass (massfunction:IBioItem -> float) acc aa = 
+            acc + massfunction aa
         
         ///
-        let private calcAIonFragMass (massfunction:Formula.Formula -> float) acc aa =
-            acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
+        let private calcAIonFragMass (massfunction:IBioItem -> float) acc aa =
+            aa |> AminoAcids.setModification CO_loss |> massfunction |> (+) acc 
         
         ///
-        let private calcCIonFragMass (massfunction:Formula.Formula -> float) acc aa =
-            acc + massfunction (AminoAcids.formula aa) + (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))
+        let private calcCIonFragMass (massfunction:IBioItem -> float) acc aa =
+            aa |> AminoAcids.setModification NH3 |> massfunction |> (+) acc 
 
         ///
-        let private calcXIonFragMass (massfunction:Formula.Formula -> float) acc aa =
-            acc + massfunction (AminoAcids.formula aa) + (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
+        let private calcXIonFragMass (massfunction:IBioItem -> float) acc aa =
+            aa |> AminoAcids.setModification CO |> massfunction |> (+) acc 
 
         ///
-        let private calcZIonFragMass (massfunction:Formula.Formula -> float) acc aa =
-            acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))
-       
+        let private calcZIonFragMass (massfunction:IBioItem -> float) acc aa =
+            aa |> AminoAcids.setModification NH3_loss |> massfunction |> (+) acc 
+
         ///
-        let private createBIonTaggedMass (massfunction:Formula.Formula -> float) acc aa = 
+        let private createBIonTaggedMass (massfunction:IBioItem -> float) acc aa = 
             TaggedMass.createTaggedMass IonTypeFlag.B (calcBorYIonFragMass massfunction acc aa)
 
         ///
-        let private createAIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+        let private createAIonTaggedMass (massfunction:IBioItem -> float) acc aa =
             TaggedMass.createTaggedMass IonTypeFlag.A (calcAIonFragMass massfunction acc aa)
 
         ///
-        let private createCIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+        let private createCIonTaggedMass (massfunction:IBioItem -> float) acc aa =
             TaggedMass.createTaggedMass IonTypeFlag.C (calcCIonFragMass massfunction acc aa)
 
         ///
-        let private createYIonTaggedMass (massfunction:Formula.Formula -> float) acc aa = 
+        let private createYIonTaggedMass (massfunction:IBioItem -> float) acc aa = 
             TaggedMass.createTaggedMass IonTypeFlag.Y (calcBorYIonFragMass massfunction acc aa)
         
         ///
-        let private createXIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+        let private createXIonTaggedMass (massfunction:IBioItem -> float) acc aa =
             TaggedMass.createTaggedMass IonTypeFlag.X (calcXIonFragMass massfunction acc aa)
 
         ///
-        let private createZIonTaggedMass (massfunction:Formula.Formula -> float) acc aa =
+        let private createZIonTaggedMass (massfunction:IBioItem -> float) acc aa =
             TaggedMass.createTaggedMass IonTypeFlag.Z (calcZIonFragMass massfunction acc aa)
 
         ///
-        let private peptideLadderElementOf (mainIonF: (Formula.Formula -> float) -> float -> AminoAcids.AminoAcid -> TaggedMass.TaggedMass) massfunction waterloss aminoloss acc (aa:AminoAcids.AminoAcid) = 
+        let private peptideLadderElementOf (mainIonF: (IBioItem -> float) -> float -> AminoAcids.AminoAcid -> TaggedMass.TaggedMass) massfunction waterloss aminoloss acc (aa:AminoAcids.AminoAcid) = 
             //        
             let mainPeak = mainIonF massfunction acc aa    
             ///
             let lossNH3Ion  = 
                 if aminoloss then 
-                    let mass = (mainPeak.Mass - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.NH3))) 
+                    let mass = mainPeak.Mass - (NH3_loss |> massfunction)
                     Some (TaggedMass.createTaggedNH3Loss mainPeak.Iontype mass)
                 else  
                     None
             ///
             let lossH2OIon  = 
                 if waterloss then 
-                    let mass = (mainPeak.Mass - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.H2O))) 
+                    let mass = mainPeak.Mass - (H2O_loss |> massfunction) 
                     Some (TaggedMass.createTaggedH2OLoss mainPeak.Iontype mass)
                 else  
                     None
@@ -118,7 +119,7 @@ module Fragmentation =
 
 
         /// Returns the masses of a, b and c series, specified by the ionSeries parameter. The mass accuracy is determined by the massfunction applied.        
-        let abcfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
+        let abcfragmentMassesOf (massfunction:IBioItem -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
             ///
             let rec series aminoList waterLoss aminoLoss fragMasses acc =
                 match aminoList with
@@ -188,7 +189,7 @@ module Fragmentation =
             |> List.rev
 
         /// Returns the masses of x, y and z series, specified by the ionSeries parameter. The mass accuracy is determined by the massfunction applied.
-        let xyzfragmentMassesOf (massfunction:Formula.Formula -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
+        let xyzfragmentMassesOf (massfunction:IBioItem -> float) (ionSeries: Ions.IonTypeFlag) (aal:AminoAcids.AminoAcid list)  = 
             ///
             let rec series aminoList waterLoss aminoLoss fragMasses acc =
                 match aminoList with
@@ -252,69 +253,69 @@ module Fragmentation =
                 | []          -> 
                     fragMasses
             let ySeries = (aal |> List.rev)
-            series ySeries false false [] (massfunction Formula.Table.H2O) 
+            series ySeries false false [] (massfunction H2O) 
 
     module Series = 
                     
         /// Retunrs the a b and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let abcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let abcOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal 
 
         /// Returns the a and b series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let abOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) =  
+        let abOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) =  
             (abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.B) aal)
 
         /// Returns the a and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let acOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let acOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A + Ions.IonTypeFlag.C) aal
 
         /// Returns the b and c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let bcOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let bcOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B + Ions.IonTypeFlag.C) aal
 
         /// Returns the a series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let aOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let aOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.A) aal
 
         /// Returns the b series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let bOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let bOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.B) aal
 
         /// Returns the c series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let cOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let cOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             abcfragmentMassesOf massfunction (Ions.IonTypeFlag.C) aal
 
         /// Returns the x y and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let xyzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xyzOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
         /// Returns the x and y series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let xyOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xyOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Y) aal
 
         /// Returns the x and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let xzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xzOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X + Ions.IonTypeFlag.Z) aal
 
         /// Returns the y and z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let yzOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let yzOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y + Ions.IonTypeFlag.Z) aal
 
         /// Returns the x series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let xOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let xOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.X) aal
 
         /// Returns the y series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let yOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let yOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Y) aal
 
         /// Returns the z series of the given amino acids list. The mass accuracy is determined by the massfunction applied.
-        let zOfBioList (massfunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let zOfBioList (massfunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             xyzfragmentMassesOf massfunction (Ions.IonTypeFlag.Z) aal
 
         /// Returns the fragment masses of the amino acid sequence specified by aal. The ionseries are specified by functions
         /// "nTerminalSeries" and "cTerminalSeries". The mass accuracy is determined by the massfunction applied.
-        let inline fragmentMasses nTerminalSeries cTerminalSeries (massFunction:Formula.Formula -> float) (aal:AminoAcids.AminoAcid list) = 
+        let inline fragmentMasses nTerminalSeries cTerminalSeries (massFunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) = 
             let targetMasses = 
                 let nTerm = nTerminalSeries massFunction aal
                 let cTerm = cTerminalSeries massFunction aal
@@ -325,7 +326,7 @@ module Fragmentation =
                 nTerm@cTerm
             createFragmentMasses targetMasses decoyMasses        
  
- //    let imoniumIons (rawMass:List<float>) (label : Formula.Formula -> Formula.Formula) = 
+ //    let imoniumIons (rawMass:List<float>) (label : IBioItem -> Formula.Formula) = 
     //        let currentCO = massDiffAX_CO label 
     //        rawMass |> List.map (fun n ->  n - currentCO)
 

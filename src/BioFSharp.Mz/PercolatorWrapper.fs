@@ -35,7 +35,7 @@ module PercolatorWrapper =
             | VerbosityOfOutput nr                   -> " --verbose " + string nr   
             | OnlyPSMs                               -> " --only-psms " 
             | PostProcessing_MIXMAX                  -> " --post-processing-mix-max "
-            | PostProcessing_TargedDecoyCompetition  -> " --post-processing-tdc "
+            | PostProcessing_TargetDecoyCompetition  -> " --post-processing-tdc "
 
         type FileInputOptions = 
             /// Read percolator tab-input format (pin-tab) from standard input.

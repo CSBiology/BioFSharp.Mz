@@ -151,24 +151,26 @@ module ChargeState =
         calcRndPosition assignedCharge stdDev
 
     /// Creates a random MzIntensityEntityCollection  
-    let rndMzIntensityEntityCollectionBy (rnd:System.Random) (stdDev: float) (maxCharge: int) maxDistance minChainLength =
-        let rec innerF count (accFloat:float) (accList:PeakList<_>) minChainLength  =
+    let rndMzIntensityEntityCollectionBy (rnd:System.Random) maxCount (stdDev: float) (maxCharge: int) maxDistance minChainLength =
+        let rec innerF count loopCounter (accFloat:float) (accList:PeakList<_>) minChainLength  =
             let rndCharge = 
                 rndIntBetween rnd 1 maxCharge
                 |> float 
             let nextRnd = (interPeakDistanceBy stdDev rndCharge)
-            if (accFloat+nextRnd) > maxDistance then 
-                 innerF 2 0. [createPeak 0. 1.] (minChainLength)  
+            if (accFloat+nextRnd) > maxDistance && loopCounter < maxCount then 
+                 innerF 2 (loopCounter+1) 0. [createPeak 0. 1.] (minChainLength)  
+            elif (accFloat+nextRnd) > maxDistance && loopCounter > maxCount then 
+                None
             elif count = minChainLength then 
-                 createPutativeIsotopeCluster ((createPeak (accFloat+nextRnd) 0.)::accList) minChainLength minChainLength    
-            else innerF (count+1) (accFloat+nextRnd) ((createPeak (accFloat+nextRnd) 0.)::accList) minChainLength     
-        innerF 2 0. [createPeak 0. 1.] (minChainLength)
+                 Some (createPutativeIsotopeCluster ((createPeak (accFloat+nextRnd) 0.)::accList) minChainLength minChainLength)    
+            else innerF (count+1) loopCounter (accFloat+nextRnd) ((createPeak (accFloat+nextRnd) 0.)::accList) minChainLength     
+        innerF 2 0 0. [createPeak 0. 1.] (minChainLength)
 
         
     /// Creates a user defined amount of random spectra of defined length. Returns the mzChargeDeviation of each simulated Spectrum
     let mzDevOfRndSpec (rnd:System.Random) chargeStateDetermParams peakPosStdDev (chainLength,charge)  = 
         [1.. chargeStateDetermParams.NrOfRndSpectra] 
-        |> List.map (fun i -> rndMzIntensityEntityCollectionBy (rnd:System.Random) peakPosStdDev chargeStateDetermParams.ExpectedMaximumCharge chargeStateDetermParams.Width chainLength)           
+        |> List.choose (fun i -> rndMzIntensityEntityCollectionBy (rnd:System.Random) 100 peakPosStdDev chargeStateDetermParams.ExpectedMaximumCharge chargeStateDetermParams.Width chainLength)           
         |> List.map (fun subSet -> 
                         let interPeakDistances = mzDistancesOf subSet.Peaks                    
                         let mzChargeDeviation = mzChargeDeviationBy interPeakDistances (1./charge)  

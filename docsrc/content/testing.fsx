@@ -130,18 +130,20 @@ plans to introduce a IsotopicModifications e.g a replacement of the N14 isotopes
 let isoMod = (SearchDB.createSearchInfoIsotopic "N15" Elements.Table.N Elements.Table.Heavy.N15)
 
 let isoM = isoMod |> SearchDB.createIsotopicMod
-let sample = BioList.ofAminoAcidString "AAA"
+let sample = BioList.ofAminoAcidString "AAAKALLPTKRSKA"
 let isoModSample = sample |> List.map (fun x -> AminoAcids.setModification isoM x)
 
 sample.[0] = isoModSample.[1]
+///Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP
+let massF : (IBioItem -> float) =  BioItem.initMonoisoMassWithMemP
 
 let getFrags seque = 
-    (Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList Formula.monoisoMass seque).TargetMasses 
-    |> List.map (fun x -> x.MainPeak)
+    (Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList massF seque)(*.TargetMasses *)
+    //|> List.map (fun x -> x.MainPeak)
 getFrags sample
 
-for i = 1 to 10000 do
-    getFrags isoModSample
+//for i = 1 to 10000 do
+//    getFrags isoModSample
 
 (**
 Selecting and initializing a mass function
@@ -154,8 +156,6 @@ building a new database. The usage of a dictionary is the reason for this functi
 creation.      
 *)
 
-///Returns a instance of the massfunction BioItem.initMonoisoMassWithMemP
-let massF : (IBioItem -> float) =  BioItem.initMonoisoMassWithMemP
 
 
 //let sample = BioList.ofAminoAcidString "AAA"
@@ -194,13 +194,16 @@ let mIsononBioOx = mIso |> AminoAcids.setModification nonBioOx
 let calcAIonFragMass (massfunction:Formula.Formula -> float) acc aa =
     acc + massfunction (AminoAcids.formula aa) - (massfunction (AminoAcids.isotopicLabelFunc aa Formula.Table.CO)) 
     
+
+let CO_loss = createModificationWithSubstract "CO-loss" true ModLocation.Cterm "CO"
+        
 let calcAIonFragMassLol (massfunction:IBioItem -> float) acc aa =
-    acc + (massfunction (aa |> AminoAcids.setModification bioOx))
+    acc + (massfunction (aa |> AminoAcids.setModification CO_loss))
          
-calcAIonFragMass Formula.monoisoMass 0. mIsononBioOx
+//calcAIonFragMassLol massF 0. mIsononBioOx
 
 //for i = 1 to 1000000 do 
-//    calcAIonFragMassLol massF 0. mIsononBioOx
+//calcAIonFragMass Formula.monoisoMass 0. mIsononBioOx
 //calcAIonFragMass Formula.monoisoMass 0. mIsononBioOx
 
 (**
@@ -209,9 +212,9 @@ Incorporation of all parameters in a single record type
 This type contains all formerly designed Parameters and additional parameters. 
 *)
 
-let mass:IBioItem -> float =  BioItem.monoisoMass //BioItem.initMonoisoMassWithMemP
+//let mass:IBioItem -> float =  BioItem.monoisoMass //BioItem.initMonoisoMassWithMemP
 
-let moddddd = GlobalModificationInfo.initGlobalModificationDeltaOfMod mass [SearchDB.createIsotopicMod isoMod]
+//let moddddd = GlobalModificationInfo.initGlobalModificationDeltaOfMod mass [SearchDB.createIsotopicMod isoMod]
 
 let acetylation'ProtNTerm' =
     createSearchModification "Acetyl(Protein N-Term)" "1" "Acetylation of the protein N-terminus" true "C2H2O"
@@ -278,9 +281,71 @@ parameters such as the size of the FASTA file, the number of given Modifications
 /// Returns a function that takes two masses as input parameters and returns a list of peptides (wrapped in the type LookUpResult)
 let n15DBLookUpBy =  
         SearchDB.getPeptideLookUpBy paramTestN15   
+#time
+#r "FSharpAux.IO"
+open FSharpAux.IO.SchemaReader
+open FSharpAux.IO.SchemaReader.Attribute
+open FSharpAux.IO.SchemaReader.Csv
+open FSharpAux.IO
 
-n15DBLookUpBy 1000. 1001.
+type Masses = {
+    [<FieldAttribute(8)>]
+    TheoMass : float
+    }
+let list = 
+    Seq.fromFileWithCsvSchema<Masses>(@"C:\Users\david\Source\Repos\netCoreRepos\BioFSharp.Mz - Copy\docsrc\content\data\20180301_MS_JT88mutID114_Quantified.tab", '\t', false,1,schemaMode=SchemaMode.Fill)
+    |> Seq.skip 1
+    |> Seq.toList
+    |> List.map (fun x -> x.TheoMass)
+let getLookUp mass =
+    let low,up = Mass.rangePpm 60. mass
+    n15DBLookUpBy 
+        low up
 
+list.Length
+
+let lookUps =
+    list.[1000..1500] 
+    |> List.mapi (fun i x ->
+                    printfn "%i"i 
+                    getLookUp x )
+
+let lengths = 
+    lookUps
+    |> List.map (fun x -> x.Length) 
+  
+open FSharp.Plotly
+Chart.Histogram(lengths)
+|> Chart.Show
+
+
+let fragments = 
+    lookUps
+    |> List.mapi (fun i x -> 
+                    printfn "%i" i
+                    x
+                    |> List.map (fun x -> getFrags x.BioSequence )
+                 )
+
+let res = 
+    fragments.[0].[0].TargetMasses 
+    |> List.mapi (fun i x -> 
+                    x.DependentPeaks 
+                    |> List.map (fun x -> x.Mass)
+                 )
+    |> List.concat
+let NH3_loss = createModificationWithSubstract "NH3-loss" true ModLocation.Nterm "NH3"
+NH3_loss |> massF
+
+printfn "%A" res
+
+let res' = 
+    (fragments.[0].[0].TargetMasses) 
+    |> List.map (fun x -> x.MainPeak.Mass)
+printfn "%A" res'
+    
+                 
+    
 let Params = 
     SearchDB.Db.isExistsBy paramTestN15
 
