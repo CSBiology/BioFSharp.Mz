@@ -73,7 +73,7 @@ module SearchEngineGeneric =
 
 
         /// 
-        let generateTheoSpectra calcIonSeries (massfunction:Formula.Formula -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) 
+        let generateTheoSpectra calcIonSeries (massfunction:IBioItem -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) 
                 (andromedaCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) (sequestCache: Cache.Cache<int64,TheoreticalSpectrum<'b> list>)  chargeState scanlimits
                     (maxMemory:int64)  lowerMass upperMass = 
             ///

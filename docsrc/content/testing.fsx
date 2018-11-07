@@ -15,6 +15,28 @@
 Peptide retrieval by mass
 =========================
 *)
+#time 
+/// Helper function to calculate the AndromedaScore
+let lnProb n k lnp lnq = 
+    let s1 = -k * lnp - (n - k) * lnq - FSharp.Stats.SpecialFunctions.Gamma.gammaLn(n + 1.) 
+                + FSharp.Stats.SpecialFunctions.Gamma.gammaLn(k + 1.) + FSharp.Stats.SpecialFunctions.Gamma.gammaLn(n - k + 1.) 
+    s1 
+    
+open System
+/// Calculates the andromedaLike Score based on offered peaks n and matched peaks k, as well as the q value threshold topx
+let scoreFuncImpl n k topx = 
+    let fTopx = float topx 
+    let p1 = Math.Min(fTopx/100.0,0.5)
+    let lnp = Math.Log(p1)
+    let lnq = Math.Log(1.0-p1)
+    let mutable acc = 0.
+    for i = k to n do 
+        acc <- acc + Math.Exp(-lnProb (float n) (float k) lnp lnq)
+    acc <- -Math.Log(acc)
+    10. * acc / Math.Log(10.)
+
+for i = 1 to 10000 do 
+    scoreFuncImpl 25 11 10
 
 (**
 This part of the documentation aims to give you a brief overview of the functionality of SearchDB.fs. This Module contains functions to initialize a user configured peptide database and to subsequently perform common database operations such as inserts or lookUps.
@@ -263,7 +285,6 @@ let paramTestN15 = {
         // Maximum number of variable modifications per peptide this constrain is used to limit the computational 
         VarModThreshold     = 2
         }
-#time  
 
 (**
 
