@@ -38,29 +38,24 @@ module ChargeState =
         }
 
     type AssignedCharge = { 
-        PrecMZ                      : float
-        Charge                      : int
+        PrecursorSpecID             : string
+        ProductSpecID               : string
+        PrecursorMZ                 : float
+        PrecCharge                  : int
         PutMass                     : float
         MZChargeDev                 : float
         Score                       : float
         DistanceRealTheoPeakSpacing : float list
         SubSetLength                : int 
         StartPeakIntensity          : float
-        Peaks        : Set<Peak>
+        Peaks                       : Set<Peak>
+        PositionMetricPValue        : float option
         } 
 
-    let createAssignedCharge precMZ charge putMass mZChargeDev score distanceRealTheoPeakSpacing subSetLength startPeakIntensity peaks= {
-        PrecMZ=precMZ; Charge=charge; PutMass=putMass; MZChargeDev=mZChargeDev; Score=score;DistanceRealTheoPeakSpacing=distanceRealTheoPeakSpacing; 
-            SubSetLength=subSetLength; StartPeakIntensity=startPeakIntensity; Peaks=peaks }
+    let createAssignedCharge precSpecID productSpecId precMZ charge putMass mZChargeDev score distanceRealTheoPeakSpacing subSetLength startPeakIntensity peaks positionMetricPValue = {
+        PrecursorSpecID=precSpecID; ProductSpecID=productSpecId; PrecursorMZ=precMZ; PrecCharge=charge; PutMass=putMass; MZChargeDev=mZChargeDev; Score=score;DistanceRealTheoPeakSpacing=distanceRealTheoPeakSpacing; 
+            SubSetLength=subSetLength; StartPeakIntensity=startPeakIntensity; Peaks=peaks; PositionMetricPValue=positionMetricPValue }
    
-    type TestedItem<'a> = {
-        TestedObject: 'a
-        PValue: float
-        }     
-    
-    let createTestedItem testedObject pValue = {
-        TestedObject=testedObject; PValue=pValue }
-
     /// Returns a Collection of MZIntensityPeaks, The Collection starts with the first Element on the right side of the startIdx. 
     /// and ends either with the last element of the mzIntensityArray or when the MzDistance to the highest Peak exceeds 
     /// the given windowwidth.   
@@ -201,7 +196,7 @@ module ChargeState =
         | None -> 1.
 
     /// Returns list of putative precursorChargeStates along with Properties used for evaluation.
-    let putativePrecursorChargeStatesBy (chargeDeterminationParams: ChargeDetermParams) (mzData: float []) (intensityData: float []) (precursorMZ:float) =
+    let putativePrecursorChargeStatesBy (chargeDeterminationParams: ChargeDetermParams) (mzData: float []) (intensityData: float []) precursorSpecID productSpecID (precursorMZ:float) =
         if mzData |> Array.isEmpty || intensityData |> Array.isEmpty then []
         else
         let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (Care.idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
@@ -225,17 +220,17 @@ module ChargeState =
                             let mzChargeDeviation = mzChargeDeviationBy interPeakDistances theoInterPeakDistances
                             let score = getScore subSet.SubSetLength subSet.SourceSetLength mzChargeDeviation
                             let putMass = BioFSharp.Mass.ofMZ precursorMZ (float assignedCharge)
-                            createAssignedCharge precursorMZ assignedCharge putMass mzChargeDeviation score distanceRealTheoPeakSpacing subSet.SubSetLength startPeakIntensity peakPos  
+                            createAssignedCharge precursorSpecID productSpecID precursorMZ assignedCharge putMass mzChargeDeviation score distanceRealTheoPeakSpacing subSet.SubSetLength startPeakIntensity peakPos None
                          )
             |> List.sortBy (fun assignedCharge ->  assignedCharge.Score)
-            |> List.distinctBy (fun assignedCharge ->  assignedCharge.Charge)
+            |> List.distinctBy (fun assignedCharge ->  assignedCharge.PrecCharge)
         
         | _ -> 
             [
                 for i = chargeDeterminationParams.ExpectedMinimalCharge to chargeDeterminationParams.ExpectedMaximumCharge do
                 let mass = Mass.ofMZ precursorMZ (float i)
                 let score = getScore originSet.SubSetLength originSet.SourceSetLength 100.
-                yield createAssignedCharge precursorMZ i mass 100. score [for j = 0 to originSet.SourceSetLength-1 do yield 0.] 0 0. (Set[])
+                yield createAssignedCharge precursorSpecID productSpecID precursorMZ i mass 100. score [for j = 0 to originSet.SourceSetLength-1 do yield 0.] 0 0. (Set[]) None
             ]
         
     /// Returns the StandardDeviation of the PeakDistances
@@ -246,12 +241,12 @@ module ChargeState =
         |> List.concat 
         |> FSharp.Stats.Seq.stDev
 
-    /// Returns a List of tested AssignedCharges. This Function eliminates all
-    let removeSubSetsOfBestHit (assignedCharges: TestedItem<AssignedCharge> list) =
-        let rec loop bestSet acc (assignedCharges: TestedItem<AssignedCharge> list) =
+    /// Returns a List of tested AssignedCharges. 
+    let removeSubSetsOfBestHit (assignedCharges: AssignedCharge list) =
+        let rec loop bestSet acc (assignedCharges: AssignedCharge list) =
             match assignedCharges with 
-            | [] -> (bestSet::acc) |> List.sortBy (fun x -> x.TestedObject.Score) 
-            | h::tail -> match Set.isSuperset bestSet.TestedObject.Peaks h.TestedObject.Peaks with
+            | [] -> (bestSet::acc) |> List.sortBy (fun x -> x.Score) 
+            | h::tail -> match Set.isSuperset bestSet.Peaks h.Peaks with
                          | false  -> loop bestSet (h::acc) tail 
                          | true -> loop bestSet acc tail
         if assignedCharges = [] then 

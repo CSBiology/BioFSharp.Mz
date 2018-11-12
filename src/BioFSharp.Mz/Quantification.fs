@@ -19,9 +19,7 @@ module Quantification =
             let a = xData.[0]
             // upper border of area estimation
             let b = xData.[xData.Length-1]
-
             let mutable trapezSum = 0.0
-    
             for i = 1 to xData.Length-2 do
                 trapezSum <- trapezSum + 2. * yData.[i]
             trapezSum <- trapezSum + yData.[0]
