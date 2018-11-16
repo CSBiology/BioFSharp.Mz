@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net45;net47;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net47;netstandard2.0</TargetFrameworks>
     <RootNamespace>BioFSharp.Mz</RootNamespace>
     <AssemblyName>BioFSharp.Mz</AssemblyName>
     <Name>BioFSharp.Mz</Name>
@@ -41,6 +41,12 @@
     <ProjectReference Include="..\..\..\FSharp.Stats\src\FSharp.Stats\FSharp.Stats.fsproj" />
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux.IO\FSharpAux.IO.fsproj" />
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux\FSharpAux.fsproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
+    <PackageReference Include="Microsoft.ML" Version="0.7.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Microsoft.ML" Version="0.7.0" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
