@@ -19,20 +19,23 @@ module FDRControl =
         |> Array.groupBy (fun s -> floor (scoreF s / bandwidth))
         |> Array.sortBy fst
         |> Array.map (fun (k,values)->
-        let median     = values |> Array.map scoreF |> Array.average
-        let totalCount = values |> Array.length |> float
-        let decoyCount = values |> Array.filter isDecoyF |> Array.length |> float
-        //(median |> float,(decoyCount * pi0  / totalCount))
-        median,totalCount,decoyCount
-            //(median, totalCount )
-        )
+                        let median     = values |> Array.map scoreF |> Array.average
+                        let totalCount = values |> Array.length |> float
+                        let decoyCount = values |> Array.filter isDecoyF |> Array.length |> float
+                        //(median |> float,(decoyCount * pi0  / totalCount))
+                        median,totalCount,decoyCount
+                            //(median, totalCount )
+                     )
         |> fun a ->
             a
-            |> Array.mapi (fun i (median,totalCount,decoyCount) ->
-                let _,totalCountRight,decoyCountRight = a.[i..a.Length-1] |> Array.reduce (fun (x,y,z) (x',y',z') -> x+x',y+y',z+z')
-                (median |> float,(pi0 * 2. * decoyCount / totalCount),(pi0 * 2. * decoyCountRight / totalCountRight))
-                )
-        |> Array.sortBy (fun (score,pep,q) -> score) |> Array.unzip3 |> fun (score,pep,q) -> vector score, vector pep, vector q
+            |> Array.mapi (fun i (median,totalCountBin,decoyCountBin) ->
+                            /// TODO: Accumulate totalCount + totalDecoyCount beforeHand and skip the time intensive mapping accross the array in each iteration.
+                            let _,totalCountRight,decoyCountRight = a.[i..a.Length-1] |> Array.reduce (fun (x,y,z) (x',y',z') -> x+x',y+y',z+z')
+                            (median,(pi0 * 2. * decoyCountBin / totalCountBin),(pi0 * 2. * decoyCountRight / totalCountRight))
+                          )
+        |> Array.sortBy (fun (score,pep,q) -> score) 
+        |> Array.unzip3 
+        |> fun (score,pep,q) -> vector score, vector pep, vector q
     
     /// Calculates q value mapping funtion for target/decoy dataset
     let getQValueFunc pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
