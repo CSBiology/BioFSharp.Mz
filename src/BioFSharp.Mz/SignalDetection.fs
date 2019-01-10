@@ -15,12 +15,6 @@ module SignalDetection =
     open BioFSharp.Mz.PeakArray
 
     module Care =    
-    
-        ///
-        type Extrema =
-            | None = 0
-            | Positive = 1 
-            | Negative = 2
 
         ///
         let getColLowBound  (xData: float[]) centerIdx mzTol = 
@@ -48,136 +42,6 @@ module SignalDetection =
             (m+currentX*currentY,i+currentY)
 
 
-        /// Returns a collection local maxima. Attention: The algorithm is very sensitive to noise and behaves irregulary for negative Y-values.
-        let localMaxima yThreshold (xData:float[]) (smoothYData:float[]) =
-            if xData.Length <= 5 then [||]
-            else       
-            [|for i = 3 to xData.Length-3 do
-                // Peak must be concave in the interval [i-2 .. i+2] and exheat a yThreshold
-                if (smoothYData.[i] > yThreshold && smoothYData.[i] > smoothYData.[i - 1] && smoothYData.[i] > smoothYData.[i + 1] 
-                                        && smoothYData.[i - 1] >= smoothYData.[i - 2] && smoothYData.[i + 1] >= smoothYData.[i + 2]) then
-
-                    // take the intensity at the apex of the profile peak
-                    yield (xData.[i], smoothYData.[i])
-                |]  
-    
-        /// Returns a collection of indices corresponding to local maxima. Attention: The algorithm is very sensitive to noise and behaves irregulary for negative Y-values.
-        let localMaximaIdx yThreshold (xData:float[]) (smoothYData:float[]) =
-            if xData.Length <= 5 then [||]
-            else       
-            [|for i = 3 to xData.Length-3 do
-                // Peak must be concave in the interval [i-2 .. i+2] and exheat a yThreshold
-                if (smoothYData.[i] > yThreshold && smoothYData.[i] > smoothYData.[i - 1] && smoothYData.[i] > smoothYData.[i + 1] 
-                                        && smoothYData.[i - 1] >= smoothYData.[i - 2] && smoothYData.[i + 1] >= smoothYData.[i + 2]) then
-
-                    // take the intensity at the apex of the profile peak
-                    yield i
-                |]  
-
-        /// Returns a collection of local minima. Attention: The algorithm is very sensitive to noise   
-        let localMinima (xData:float[]) (smoothYData:float[]) =
-            if xData.Length <= 5 then [||]
-            else
-            [|for i = 3 to xData.Length-3 do
-                // Peak must be concave in the interval [i-2 .. i+2] and exheat a min hight (min_dh)
-                if (smoothYData.[i] < smoothYData.[i - 1] && smoothYData.[i] < smoothYData.[i + 1]  //smoothYData.[i] > yThreshold
-                    && smoothYData.[i - 1] <= smoothYData.[i - 2] && smoothYData.[i + 1] <= smoothYData.[i + 2]) then
-
-                    // take the intensity at the apex of the profile peak
-                    yield (xData.[i], smoothYData.[i])
-                |]    
-
-        /// Returns a collection of indices corresponding to local minima. Attention: The algorithm is very sensitive to noise   
-        let localMinimaIdx (xData:float[]) (smoothYData:float[]) =
-            if xData.Length <= 5 then [||]
-            else
-            [|for i = 3 to xData.Length-3 do
-                // Peak must be concave in the interval [i-2 .. i+2] and exheat a min hight (min_dh)
-                if (smoothYData.[i] < smoothYData.[i - 1] && smoothYData.[i] < smoothYData.[i + 1]  //smoothYData.[i] > yThreshold
-                    && smoothYData.[i - 1] <= smoothYData.[i - 2] && smoothYData.[i + 1] <= smoothYData.[i + 2]) then
-
-                    // take the intensity at the apex of the profile peak
-                    yield i
-                |]    
-
-        /// Returns Index of the highestPeak flanking a given mzValue
-        let idxOfHighestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
-            let idxHigh = 
-                mzData |> Array.tryFindIndex (fun x -> x > mzValue) // faster as binary search
-            let idxLow = 
-                match idxHigh with 
-                | None   -> Some (mzData.Length-1) 
-                | Some value -> match value with 
-                                | 0 -> None
-                                | _ -> Some (value-1)  
-            if idxLow = None then 
-                 idxHigh.Value
-            elif idxHigh = None then 
-                 idxLow.Value
-            else
-                if intensityData.[idxLow.Value] > intensityData.[idxHigh.Value] then 
-                     idxLow.Value
-                else idxHigh.Value
-                
-        /// Returns Index of the highestPeak flanking a given mzValue
-        let idxOfClosestPeakBy (mzData: float []) (intensityData: float []) mzValue = 
-            if mzData |> Array.isEmpty then 0
-            else
-            mzData 
-            |> Array.mapi (fun i x -> abs (x - mzValue), i) // faster as binary search
-            |> Array.minBy (fun (value,idx) -> value)
-            |> fun (value,idx) -> idx
-
-        /// Returns a collection of local Maxima and Minima. Attention: The algorithm is very sensitive to noise   
-        let labelPeaks negYThreshold posYThreshold (xData:float[]) (smoothYData:float[]) =
-            if xData.Length <= 5 then [||]
-            else
-            [|for i = 0 to xData.Length-1 do 
-                if i < 3 || i > xData.Length-3 then
-                    yield {Meta=Extrema.None; Data= xData.[i],smoothYData.[i]}
-                                    
-                elif (smoothYData.[i] > posYThreshold && smoothYData.[i] > smoothYData.[i - 1] && smoothYData.[i] > smoothYData.[i + 1] 
-                    && smoothYData.[i - 1] >= smoothYData.[i - 2] && smoothYData.[i + 1] >= smoothYData.[i + 2]) then
-                    yield {Meta=Extrema.Positive; Data= xData.[i],smoothYData.[i]} //TODO: Typ is tin Peak.fs definiert, creatorFunktion verwenden
-
-                // Peak must be concave in the interval [i-2 .. i+2] and exheat a min hight (min_dh)
-                elif (smoothYData.[i] < negYThreshold && smoothYData.[i] < smoothYData.[i - 1] && smoothYData.[i] < smoothYData.[i + 1]  //smoothYData.[i] > yThreshold
-                    && smoothYData.[i] < smoothYData.[i - 2] && smoothYData.[i] < smoothYData.[i + 2]) then
-                    yield {Meta=Extrema.Negative; Data= xData.[i],smoothYData.[i]}
-                else
-                    yield {Meta=Extrema.None; Data= xData.[i],smoothYData.[i]}
-                |]    
-
-        // Returns the index of the peak with the highest intensity
-        let idxOfHighestLabeledPeakBy (labeledData: Tag<Extrema,(float*float)>[]) (labelV:Extrema) = 
-            if labeledData |> Array.isEmpty then None
-            else
-            labeledData  
-            |> Array.mapi (fun i x -> i, x) 
-            |> Array.filter (fun (i,x) -> x.Meta = labelV)
-            |> fun farr -> 
-                if farr |> Array.isEmpty then 
-                    None     
-                else  
-                    farr 
-                    |> Array.maxBy (fun (idx,value) -> snd value.Data ) 
-                    |> Some
-                
-        // Returns the index of the peak with the highest intensity
-        let idxOfClosestLabeledPeak (labeledData: Tag<Extrema,(float*float)>[]) (labelV:Extrema) xValue = 
-            if labeledData |> Array.isEmpty then None
-            else
-            labeledData  
-            |> Array.mapi (fun i x -> i, x) 
-            |> Array.filter (fun (i,x) -> x.Meta = labelV)
-            |> fun farr -> 
-                if farr |> Array.isEmpty then 
-                    None     
-                else
-                    farr 
-                    |> Array.minBy (fun (idx,value) -> abs (fst value.Data - xValue) ) 
-                    |> Some
-            
         /// Returns a Array containing the distances between adjacent mz values of the input array.
         let createXspacing (mzData:float[]) =
             let xSpacing = Array.create (mzData.Length) 0.
@@ -214,6 +78,7 @@ module SignalDetection =
                 let high = sortedData.[int highIndex]
                 (low + (high - low) * fraction)
     
+    // TODO: add to FSharp.Stats.Signal
     module Padding = 
         
         ///
@@ -675,6 +540,7 @@ module SignalDetection =
 
     module SecondDerivative =
     
+
         let toCentroid windowSizeSNR windowSizeSGfilter mzTol noise_perc (mzData:float []) (intensityData:float []) =
             if mzData.Length < 5 || intensityData.Length < 5 then [||],[||]
             else
@@ -719,7 +585,7 @@ module SignalDetection =
             let filteredPeaks =
                 let filteredPeaks = ResizeArray<(float*float)*int>()
                 negSndDev
-                |> (Care.localMaximaIdx 0. mzData) 
+                |> (FSharp.Stats.Signal.PeakDetection.localMaximaIdx 0. mzData) 
                 |> Array.iter (fun i -> 
                                 let noiseBin = 
                                     let tmp = i/windowSizeSNR

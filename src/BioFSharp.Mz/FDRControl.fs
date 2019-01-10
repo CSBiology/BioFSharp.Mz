@@ -11,7 +11,7 @@ module FDRControl =
             | Some a -> a
             | None -> failwith "Could not find an alpha for logistic regression of fdr data"
         let weight = FSharp.Stats.Fitting.LogisticRegression.Univariable.coefficient epsilon alpha x y
-        FSharp.Stats.Fitting.LogisticRegression.Univariable.fitFunc weight
+        FSharp.Stats.Fitting.LogisticRegression.Univariable.fit weight
 
     /// returns scores, pep, q
     let private binningFunction bandwidth pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])  =   

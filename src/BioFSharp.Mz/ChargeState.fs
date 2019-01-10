@@ -11,7 +11,7 @@ module ChargeState =
     open PeakArray
     open PeakList
     open SignalDetection
-
+    
     
     type ChargeDetermParams = {
         ExpectedMinimalCharge : int ///TODO: learn from Data
@@ -199,7 +199,7 @@ module ChargeState =
     let putativePrecursorChargeStatesBy (chargeDeterminationParams: ChargeDetermParams) (mzData: float []) (intensityData: float []) precursorSpecID productSpecID (precursorMZ:float) =
         if mzData |> Array.isEmpty || intensityData |> Array.isEmpty then []
         else
-        let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (Care.idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
+        let (startPeakIntensity,originSet) = getRelPeakPosInWindowBy (mzData: float []) (intensityData: float [])  chargeDeterminationParams.Width chargeDeterminationParams.MinIntensity chargeDeterminationParams.DeltaMinIntensity (FSharp.Stats.Signal.PeakDetection.idxOfClosestPeakBy  (mzData: float []) (intensityData: float [])  precursorMZ)
         match originSet with 
         /// if the peak number within a window of 1. Da exceeds 15 this is indicative of too much noise to accurately determine the charge state.
         | oSet when oSet.SourceSetLength < 15 -> 
