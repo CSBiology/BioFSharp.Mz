@@ -11,7 +11,7 @@ module FDRControl =
             | Some a -> a
             | None -> failwith "Could not find an alpha for logistic regression of fdr data"
         let weight = FSharp.Stats.Fitting.LogisticRegression.Univariable.coefficient epsilon alpha x y
-        FSharp.Stats.Fitting.LogisticRegression.Univariable.fitFunc weight
+        FSharp.Stats.Fitting.LogisticRegression.Univariable.fit weight
 
     /// returns scores, pep, q
     let binningFunction bandwidth pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])  = 
@@ -32,52 +32,43 @@ module FDRControl =
         )
         |> fun a ->
             a
-            |> Array.mapi (fun i (median,totalCount,decoyCount) ->
-                let _,totalCountRight,decoyCountRight = a.[i..a.Length-1] |> Array.reduce (fun (x,y,z) (x',y',z') -> x+x',y+y',z+z')
-                (median |> float,(pi0 * 2. * decoyCount / totalCount),(pi0 * 2. * decoyCountRight / totalCountRight))
-                )
-        |> Array.sortBy (fun (score,pep,q) -> score) |> Array.unzip3 |> fun (score,pep,q) -> vector score, vector pep, vector q    
-   
-    /// Calculates q values for target/decoy dataset
-    let getQValues pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
-        let bw = 
-            data 
-            |> Array.map scoreF
-            |> FSharp.Stats.Distributions.Bandwidth.nrd0
-        let (scores,_,q) = binningFunction bw pi0 scoreF isDecoyF data
-        let f = getLogisticRegressionFunction scores q 0.0000001
-        data
-        |> Array.map (scoreF >> f)
-
+            |> Array.mapi (fun i (median,totalCountBin,decoyCountBin) ->
+                            /// TODO: Accumulate totalCount + totalDecoyCount beforeHand and skip the time intensive mapping accross the array in each iteration.
+                            let _,totalCountRight,decoyCountRight = a.[i..a.Length-1] |> Array.reduce (fun (x,y,z) (x',y',z') -> x+x',y+y',z+z')
+                            (median,(pi0 * 2. * decoyCountBin / totalCountBin),(pi0 * 2. * decoyCountRight / totalCountRight))
+                          )
+        |> Array.sortBy (fun (score,pep,q) -> score) 
+        |> Array.unzip3 
+        |> fun (score,pep,q) -> vector score, vector pep, vector q
+    
     /// Calculates q value mapping funtion for target/decoy dataset
     let getQValueFunc pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
         let bw = 
             data 
             |> Array.map scoreF
             |> FSharp.Stats.Distributions.Bandwidth.nrd0
-        let (scores,_,q) = binningFunction bw pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])
+        let (scores,_,q) = binningFunction bw pi0 scoreF isDecoyF data
         getLogisticRegressionFunction scores q 0.0000001
 
-    /// Calculates pep values for target/decoy dataset
-    let getPEPValues pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
-        let bw = 
-            data 
-            |> Array.map scoreF
-            |> FSharp.Stats.Distributions.Bandwidth.nrd0
-        let (scores,pep,_) = binningFunction bw pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])
-        let f = getLogisticRegressionFunction scores pep 0.0000001
-        data
-        |> Array.map (scoreF >> f)
-    
+    /// Calculates q values for target/decoy dataset
+    let getQValues pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
+        let f = getQValueFunc pi0 scoreF isDecoyF data
+        Array.map (scoreF >> f) data
+
     /// Calculates pep value mapping funtion for target/decoy dataset
     let getPEPValueFunc pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
         let bw = 
             data 
             |> Array.map scoreF
             |> FSharp.Stats.Distributions.Bandwidth.nrd0
-        let (scores,pep,_) = binningFunction bw pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])
+        let (scores,pep,_) = binningFunction bw pi0 scoreF isDecoyF data
         getLogisticRegressionFunction scores pep 0.0000001
 
+    /// Calculates pep values for target/decoy dataset
+    let getPEPValues pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
+        let f = getPEPValueFunc pi0 scoreF isDecoyF data 
+        Array.map (scoreF >> f) data 
+    
     /// Calculates Q-Values from pep-values
     let getQValuesFromPEPValues (pepValues : float []) = 
         let q : float [] = Array.zeroCreate pepValues.Length

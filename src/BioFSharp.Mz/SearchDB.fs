@@ -792,9 +792,25 @@ module SearchDB =
             )
 
             /// Prepares statement to select a ModSequence entry by Massrange (Between selected Mass -/+ the selected toleranceWidth)
-            let prepareSelectModsequenceByMassRange (cn:SQLiteConnection) tr =
+            let prepareSelectModsequenceByMassRangeWith (cn:SQLiteConnection) tr =
                 let querystring = "SELECT * FROM ModSequence WHERE RoundedMass BETWEEN @mass1 AND @mass2"
                 let cmd = new SQLiteCommand(querystring, cn, tr) 
+                cmd.Parameters.Add("@mass1", Data.DbType.Int64) |> ignore
+                cmd.Parameters.Add("@mass2", Data.DbType.Int64) |> ignore
+                let rec readerloop (reader:SQLiteDataReader) (acc:(int*int*float*int64*string*int) list) =
+                        match reader.Read() with 
+                        | true  -> readerloop reader (( reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetInt32(5) ) :: acc)
+                        | false ->  acc 
+                fun (mass1:int64) (mass2:int64) ->
+                cmd.Parameters.["@mass1"].Value <- mass1
+                cmd.Parameters.["@mass2"].Value <- mass2
+                use reader = cmd.ExecuteReader()            
+                readerloop reader [] 
+
+            /// Prepares statement to select a ModSequence entry by Massrange (Between selected Mass -/+ the selected toleranceWidth)
+            let prepareSelectModsequenceByMassRange (cn:SQLiteConnection) =
+                let querystring = "SELECT * FROM ModSequence WHERE RoundedMass BETWEEN @mass1 AND @mass2"
+                let cmd = new SQLiteCommand(querystring, cn) 
                 cmd.Parameters.Add("@mass1", Data.DbType.Int64) |> ignore
                 cmd.Parameters.Add("@mass2", Data.DbType.Int64) |> ignore
                 let rec readerloop (reader:SQLiteDataReader) (acc:(int*int*float*int64*string*int) list) =
@@ -1429,47 +1445,24 @@ module SearchDB =
     let createLookUpResultBy parseAAString (modSID,pepID,realMass,roundMass,seqs,gMod)  =
             let bSeq = parseAAString gMod seqs
             createLookUpResult modSID pepID realMass roundMass seqs bSeq gMod   
-                    
-     /// Returns a list of proteins retrieved by PepsequenceID
-    let getProteinLookUpFromFileBy sdbParams = 
-        let dbFilePath = Db.getNameOf sdbParams
-        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
-        let cn = new SQLiteConnection(connectionString)
-        cn.Open()
-        let tr = cn.BeginTransaction()
-        let selectCleavageIdxByPepSeqID   = Db.SQLiteQuery.prepareSelectCleavageIndexByPepSequenceID cn tr
-        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID cn tr        
-        (fun pepSequenceID -> 
-                selectCleavageIdxByPepSeqID pepSequenceID
-                |> List.map (fun (_,protID,_,_,_,_) -> selectProteinByProtID protID )
-        )
 
-     /// Returns a LookUpResult list
-    let getPeptideLookUpFromFileBy sdbParams = 
+    ///
+    let getDBConnectionBy sdbParams =
         let dbFilePath = Db.getNameOf sdbParams
         let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
-        let tr = cn.BeginTransaction()
-        let parseAAString = initOfModAminoAcidString sdbParams.IsotopicMod (sdbParams.FixedMods@sdbParams.VariableMods)
-        let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRange cn tr
-        (fun lowerMass upperMass  -> 
-                let lowerMass' = Convert.ToInt64(lowerMass*1000000.)
-                let upperMass' = Convert.ToInt64(upperMass*1000000.)
-                selectModsequenceByMassRange lowerMass' upperMass'
-                |> List.map (createLookUpResultBy parseAAString)
-        )
-                       
-    /// Returns a LookUpResult list 
-    let getPeptideLookUpBy (sdbParams:SearchDbParams) =
+        cn
+
+    ///
+    let connectOrCreateDB sdbParams =
         // Check existens by param
         if Db.isExistsBy sdbParams then            
-            getPeptideLookUpFromFileBy sdbParams        
+            getDBConnectionBy sdbParams        
         else
             // Create db file
             let dbFileName = Db.getNameOf sdbParams
             Db.initDB dbFileName
-
             // prepares LookUpMaps of modLookUp based on the dbParams
             let modLookUp = ModCombinator.modLookUpOf sdbParams
             // Set name of global modification
@@ -1494,7 +1487,6 @@ module SearchDB =
                                             let cleavageRange = x.CleavageEnd - x.CleavageStart
                                             cleavageRange > sdbParams.MinPepLength && cleavageRange < sdbParams.MaxPepLength 
                                         )
-                        |> fun x -> x
                         |> (ModCombinator.getModSequencesOf peptideId modLookUp sdbParams.VarModThreshold sdbParams.MassFunction)                     
                     createProteinContainer 
                         proteinId 
@@ -1504,10 +1496,66 @@ module SearchDB =
                 ) 
             |> Db.bulkInsert cn
             |> ignore                
-                
+            cn
+
+    /// Returns a list of proteins retrieved by PepsequenceID
+    let getProteinLookUpFromFileBy sdbParams = 
+        let dbFilePath = Db.getNameOf sdbParams
+        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
+        let cn = getDBConnectionBy sdbParams
+        cn.Open()
+        let tr = cn.BeginTransaction()
+        let selectCleavageIdxByPepSeqID   = Db.SQLiteQuery.prepareSelectCleavageIndexByPepSequenceID cn tr
+        let selectProteinByProtID         = Db.SQLiteQuery.prepareSelectProteinByID cn tr        
+        (fun pepSequenceID -> 
+                selectCleavageIdxByPepSeqID pepSequenceID
+                |> List.map (fun (_,protID,_,_,_,_) -> selectProteinByProtID protID )
+        )
+
+     /// Returns a LookUpResult list
+    let getPeptideLookUpFromFileBy sdbParams = 
+        let dbFilePath = Db.getNameOf sdbParams
+        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
+        let cn = new SQLiteConnection(connectionString)
+        cn.Open()
+        let tr = cn.BeginTransaction()
+        let parseAAString = initOfModAminoAcidString sdbParams.IsotopicMod (sdbParams.FixedMods@sdbParams.VariableMods)
+        let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRangeWith cn tr
+        (fun lowerMass upperMass  -> 
+                let lowerMass' = Convert.ToInt64(lowerMass*1000000.)
+                let upperMass' = Convert.ToInt64(upperMass*1000000.)
+                selectModsequenceByMassRange lowerMass' upperMass'
+                |> List.map (createLookUpResultBy parseAAString)
+        )
+
+        /// Returns a LookUpResult list
+    let getThreadSafePeptideLookUpFromFileBy (cn:SQLiteConnection) sdbParams = 
+        let parseAAString = initOfModAminoAcidString sdbParams.IsotopicMod (sdbParams.FixedMods@sdbParams.VariableMods)
+        let selectModsequenceByMassRange = Db.SQLiteQuery.prepareSelectModsequenceByMassRange cn 
+        (fun lowerMass upperMass  -> 
+                let lowerMass' = Convert.ToInt64(lowerMass*1000000.)
+                let upperMass' = Convert.ToInt64(upperMass*1000000.)
+                selectModsequenceByMassRange lowerMass' upperMass'
+                |> List.map (createLookUpResultBy parseAAString)
+        )   
+   
+    let copyDBIntoMemory (cn:SQLiteConnection) = 
+        //cn.Open()
+        let inMemoryDB = new SQLiteConnection("Data Source=:memory:;cache=shared;Version=3")
+        inMemoryDB.Open()
+        cn.BackupDatabase(inMemoryDB,"main","main",2000,null,10000)
+        //cn.Close()
+        inMemoryDB
+
+    /// Returns a LookUpResult list 
+    let getPeptideLookUpBy (sdbParams:SearchDbParams) =
+        // Check existens by param
+        if Db.isExistsBy sdbParams then            
+            getPeptideLookUpFromFileBy sdbParams        
+        else
+            connectOrCreateDB sdbParams |> ignore
             getPeptideLookUpFromFileBy sdbParams
-
-
+                
     ///    
     let getPeptideLookUpWithMemBy calcIonSeries massFunction (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) lowerMass upperMass = 
         let lowerMassAsInt = Convert.ToInt64(lowerMass * 1000000.)
