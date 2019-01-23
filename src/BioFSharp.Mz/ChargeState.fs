@@ -181,6 +181,7 @@ module ChargeState =
     /// Returns the empirically determined PValue. The PValue is the quotient of simulated mzChargeDeviations lower than the mzChargeDeviation
     /// observed divided by their total number
     let empiricalPValueOfSim initGenerateMzSpecDevWithMemF (nrOfPeaksInSubSet,charge) score  = //TODO nrOfPeaks,charge score in parameter
+        if nrOfPeaksInSubSet <= 1 then 1. else
         let generateMzSpecDev = initGenerateMzSpecDevWithMemF (nrOfPeaksInSubSet,charge)
         let numerator =  (generateMzSpecDev |> Array.tryFindIndex (fun x -> x > score)) 
         match numerator with
