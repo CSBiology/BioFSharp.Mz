@@ -5,7 +5,7 @@ open FSharp.Stats
 module FDRControl = 
 
     /// for given data, creates a logistic regression model and returns a mapping function for this model
-    let private getLogisticRegressionFunction (x:vector) (y:vector) epsilon = 
+    let getLogisticRegressionFunction (x:vector) (y:vector) epsilon = 
         let alpha = 
             match FSharp.Stats.Fitting.LogisticRegression.Univariable.estimateAlpha epsilon x y with 
             | Some a -> a
@@ -14,17 +14,21 @@ module FDRControl =
         FSharp.Stats.Fitting.LogisticRegression.Univariable.fitFunc weight
 
     /// returns scores, pep, q
-    let private binningFunction bandwidth pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])  =   
+    let binningFunction bandwidth pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[])  = 
+        let totalDecoyProportion = 
+            let decoyCount = Array.filter isDecoyF data |> Array.length |> float
+            let totalCount = data |> Array.length  |> float
+            1. / (2. * decoyCount / totalCount)
         data
         |> Array.groupBy (fun s -> floor (scoreF s / bandwidth))
         |> Array.sortBy fst
         |> Array.map (fun (k,values)->
-        let median     = values |> Array.map scoreF |> Array.average
-        let totalCount = values |> Array.length |> float
-        let decoyCount = values |> Array.filter isDecoyF |> Array.length |> float
-        //(median |> float,(decoyCount * pi0  / totalCount))
-        median,totalCount,decoyCount
-            //(median, totalCount )
+            let median     = values |> Array.map scoreF |> Array.average
+            let totalCount = values |> Array.length |> float
+            let decoyCount = values |> Array.filter isDecoyF |> Array.length |> float |> (*) totalDecoyProportion
+            //(median |> float,(decoyCount * pi0  / totalCount))
+            median,totalCount,decoyCount
+                //(median, totalCount )
         )
         |> fun a ->
             a
@@ -32,8 +36,8 @@ module FDRControl =
                 let _,totalCountRight,decoyCountRight = a.[i..a.Length-1] |> Array.reduce (fun (x,y,z) (x',y',z') -> x+x',y+y',z+z')
                 (median |> float,(pi0 * 2. * decoyCount / totalCount),(pi0 * 2. * decoyCountRight / totalCountRight))
                 )
-        |> Array.sortBy (fun (score,pep,q) -> score) |> Array.unzip3 |> fun (score,pep,q) -> vector score, vector pep, vector q
-    
+        |> Array.sortBy (fun (score,pep,q) -> score) |> Array.unzip3 |> fun (score,pep,q) -> vector score, vector pep, vector q    
+   
     /// Calculates q values for target/decoy dataset
     let getQValues pi0 (scoreF: 'A -> float) (isDecoyF: 'A -> bool) (data:'A[]) = 
         let bw = 
