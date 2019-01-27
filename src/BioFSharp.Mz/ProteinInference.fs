@@ -12,7 +12,8 @@ module ProteinInference =
         interface IEqualityComparer<'a> with
             member x.Equals(a,b) = a = b
             member x.GetHashCode a = hash a 
-            
+    
+    /// For a single peptide Sequence, contains information about all proteins it might originate from and its evidence class.
     type ProteinClassItem<'sequence> = 
         {
             GroupOfProteinIDs: string []
@@ -20,6 +21,7 @@ module ProteinInference =
             Class: PeptideEvidenceClass
         }
 
+    /// For a group of proteins, contains information about all peptides that might be used for its quantification.
     type InferredProteinClassItem<'sequence> = 
         {
             GroupOfProteinIDs: string
@@ -27,7 +29,7 @@ module ProteinInference =
             Class: PeptideEvidenceClass
         }    
 
-    let createInferredProteinClassItem proteinIDs evidenceClass peptideSequences = 
+    let private createInferredProteinClassItem proteinIDs evidenceClass peptideSequences = 
         {
             GroupOfProteinIDs = proteinIDs
             PeptideSequence = peptideSequences
@@ -40,10 +42,21 @@ module ProteinInference =
             PeptideSequence = peptideSequence
             Class = evidenceClass
         }
-    
+ 
+    /// Used to decide wether overlapping groups of proteins should be kept or merged
     type IntegrationStrictness = 
-        | KeepOverlap
-        | KeepSmallerGroup
+        /// Results in the minimal set of proteins which still can explain all measured peptides
+        | MinimalProtein
+        /// All protein groups stay intact
+        | MaximalProtein
+
+    /// Used to decide which peptides should be used for quantification of protein groups
+    type PeptideUsageForQuantification =
+        /// Use only the best matchin peptides
+        | Minimal
+        /// Use all available peptides
+        | Maximal
+
 
     let private increaseClass c =
         match c with
@@ -62,17 +75,15 @@ module ProteinInference =
         | PeptideEvidenceClass.C3a -> "Class3A"
         | PeptideEvidenceClass.C3b -> "Class3B"
 
-    /// Contains all different classes with their associated proteins
-
+    /// Appends a collection of proteins to a single string
     let private proteinGroupToString (proteinGroup:string[]) =
         Array.reduce (fun x y ->  x + ";" + y) proteinGroup
 
-
-    type ClassMap =
+    /// Contains all different classes with their associated proteins
+    type private ClassMap =
         Map<PeptideEvidenceClass,BidirectionalDictionary<string,string>>
 
     module private ClassMap =
-
         ///Creates a new empty ClassMap
         let empty() : ClassMap =
             Map.empty
@@ -83,7 +94,7 @@ module ProteinInference =
             |> Map.add PeptideEvidenceClass.C3a (BidirectionalDictionary<string,string>())
             |> Map.add PeptideEvidenceClass.C3b (BidirectionalDictionary<string,string>())
 
-        ///Searches the Memory Map from highest ranking to lowest ranking class for any of the given proteinIds
+        ///Searches the Memory Map from highest ranking to lowest ranking class for any of the given proteinIds. If an overlap exists, returns its evidence class.
         let searchProts (m:ClassMap) (prots:string[]) =
             match Map.tryFindKey (fun c (d:BidirectionalDictionary<string,string>) ->
                     Array.exists (fun p -> d.ContainsKey p) prots
@@ -98,8 +109,8 @@ module ProteinInference =
             m
 
     ///In a given class finds the overlap between the given and already added proteins and integrates them
-    let integrate (m:ClassMap) c proteinGroups : ClassMap =
-        let int (dict:BidirectionalDictionary<string,string>) =
+    let private integrate (m:ClassMap) c proteinGroups : ClassMap =
+        let merge (dict:BidirectionalDictionary<string,string>) =
             let dict = dict
             let oldGroups =
                 Array.choose (dict.TryGetByKey >> (Option.map Array.ofSeq)) proteinGroups
@@ -119,10 +130,10 @@ module ProteinInference =
             ) 
             dict
         Map.map (fun ca dict ->
-            if ca = c then int dict
+            if ca = c then merge dict
             else dict) m
     
-    let groupIntoClasses (integrationFunction: ClassMap -> PeptideEvidenceClass -> string [] -> ClassMap) (proteinClassItems: ProteinClassItem<'sequence> list ) =
+    let private createClassMap (integrationStrictness:IntegrationStrictness) (proteinClassItems: ProteinClassItem<'sequence> list ) =
         let rec loop (m:ClassMap) proteinClassItems remaining lookingForClass =
             let findAndIntegrate (m:ClassMap) (c:PeptideEvidenceClass) (proteins:string []) =
                 match ClassMap.searchProts m proteins with
@@ -133,7 +144,7 @@ module ProteinInference =
                     if foundC < c then
                         m
                     else
-                        integrationFunction m foundC proteins
+                        integrate m foundC proteins
             match proteinClassItems with
             | (item:ProteinClassItem<'sequence>) :: l ->
                     if item.Class = lookingForClass then
@@ -148,8 +159,8 @@ module ProteinInference =
                     loop m remaining [] (increaseClass lookingForClass)
         loop (ClassMap.empty()) proteinClassItems [] PeptideEvidenceClass.C1a
 
-    let inferSequences integrationFunction (proteinClassItems: ProteinClassItem<'sequence> list) =
-        ///Adds a value v to the set of values already associated with key k
+    /// Used to map the resulting protein groups to the sequences which are used for their quantification
+    let createProteinGroupToPepSequencesMap (peptideUsageForQuantification:PeptideUsageForQuantification) (proteinClassItems: ProteinClassItem<'sequence> list) =
         let internalAdd (dict:Dictionary<string,HashSet<'sequence>>) (k:string) (v:'sequence) =
             match dict.TryGetValue(k) with
             | (true, container) ->
@@ -157,11 +168,17 @@ module ProteinInference =
             | (false,_) -> 
                 let tmp = HashSet<'sequence>(new StructuralEqualityComparer<'sequence>())
                 tmp.Add(v) |> ignore
-                dict.Add(k,tmp) 
-        let classes = groupIntoClasses integrationFunction proteinClassItems
+                dict.Add(k,tmp)
         let seqDict = System.Collections.Generic.Dictionary<string,HashSet<'sequence>>()
         proteinClassItems
         |> List.iter (fun i -> internalAdd seqDict (proteinGroupToString i.GroupOfProteinIDs) i.PeptideSequence)
+        seqDict
+
+    let inferSequences (integrationStrictness:IntegrationStrictness) (peptideUsageForQuantification:PeptideUsageForQuantification) (proteinClassItems: ProteinClassItem<'sequence> list) =
+        ///Adds a value v to the set of values already associated with key k
+        let classes : ClassMap = createClassMap integrationStrictness proteinClassItems
+        /// Used to map the resulting protein groups to the sequences which are used for their quantification
+        let seqDict = createProteinGroupToPepSequencesMap peptideUsageForQuantification proteinClassItems
         classes
         |> Seq.collect (fun kv -> 
             let c = kv.Key

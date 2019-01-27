@@ -1446,6 +1446,13 @@ module SearchDB =
             let bSeq = parseAAString gMod seqs
             createLookUpResult modSID pepID realMass roundMass seqs bSeq gMod   
 
+    /// Opens a new connection to the database in given path
+    let getDBConnection dbFilePath =
+        let connectionString = sprintf "Data Source=%s;Version=3" dbFilePath
+        let cn = new SQLiteConnection(connectionString)
+        cn.Open()
+        cn
+
     ///
     let getDBConnectionBy sdbParams =
         let dbFilePath = Db.getNameOf sdbParams
