@@ -53,10 +53,12 @@ module ProteinInference =
 
     /// Used to decide which peptides should be used for quantification of protein groups
     type PeptideUsageForQuantification =
-        /// Use only the best matchin peptides
+        /// Use only the best matching peptides
         | Minimal
-        /// Use all available peptides
+        /// Use all available peptides which point to a protein group which includes the given protein group
         | Maximal
+        /// Use all available peptides which point to a part of the protein group
+        | MaximalInverse
 
 
     let private increaseClass c =
@@ -195,25 +197,38 @@ module ProteinInference =
             |> Seq.map (fun group -> 
                 let prots = Option.get (d.TryGetByValue group)
                 let protSet = Set.ofSeq prots
-                let potentialCandidates = 
-                    prots
-                    |> Seq.collect (fun prot -> 
-                        seqDict.[prot]
-                        |> Seq.choose (fun protClassItem -> 
-                            let set = Set.ofArray protClassItem.GroupOfProteinIDs
-                            if Set.isSubset protSet set then
-                                Some protClassItem
-                            else 
-                                None
-                            )
-                        )
-                if peptideUsageForQuantification = PeptideUsageForQuantification.Maximal then 
+                match peptideUsageForQuantification with
+                | PeptideUsageForQuantification.Maximal ->                     
+                    let potentialCandidates = 
+                        prots
+                        |> Seq.collect (fun prot -> 
+                            seqDict.[prot]
+                            |> Seq.choose (fun protClassItem -> 
+                                let set = Set.ofArray protClassItem.GroupOfProteinIDs
+                                if Set.isSubset protSet set then
+                                    Some protClassItem
+                                else 
+                                    None
+                                )
+                            )                    
                     potentialCandidates
                     |> Seq.map (fun pci -> pci.PeptideSequence)
                     |> Seq.toArray
                     |> Array.distinct
                     |> createInferredProteinClassItem group c 
-                else 
+                | PeptideUsageForQuantification.Minimal -> 
+                    let potentialCandidates = 
+                        prots
+                        |> Seq.collect (fun prot -> 
+                            seqDict.[prot]
+                            |> Seq.choose (fun protClassItem -> 
+                                let set = Set.ofArray protClassItem.GroupOfProteinIDs
+                                if Set.isSubset protSet set then
+                                    Some protClassItem
+                                else 
+                                    None
+                                )
+                            )   
                     let withLength = 
                         potentialCandidates
                         |> Seq.map (fun pci -> pci.GroupOfProteinIDs.Length,pci)
@@ -223,6 +238,24 @@ module ProteinInference =
                     |> Seq.toArray
                     |> Array.distinct
                     |> createInferredProteinClassItem group c
+                | PeptideUsageForQuantification.MaximalInverse ->    
+                    let potentialCandidates = 
+                        prots
+                        |> Seq.collect (fun prot -> 
+                            seqDict.[prot]
+                            |> Seq.choose (fun protClassItem -> 
+                                let set = Set.ofArray protClassItem.GroupOfProteinIDs
+                                if Set.isSubset set protSet then
+                                    Some protClassItem
+                                else 
+                                    None
+                                )
+                            )                    
+                    potentialCandidates
+                    |> Seq.map (fun pci -> pci.PeptideSequence)
+                    |> Seq.toArray
+                    |> Array.distinct
+                    |> createInferredProteinClassItem group c                     
                 )
             )
 
