@@ -7,12 +7,14 @@ open System.Collections.Generic
 
 
 module ProteinInference = 
+    open BioFSharp.Elements
 
     type internal StructuralEqualityComparer<'a when 'a : equality >() = 
         interface IEqualityComparer<'a> with
             member x.Equals(a,b) = a = b
             member x.GetHashCode a = hash a 
-            
+    
+    /// For a single peptide Sequence, contains information about all proteins it might originate from and its evidence class.
     type ProteinClassItem<'sequence> = 
         {
             GroupOfProteinIDs: string []
@@ -20,6 +22,7 @@ module ProteinInference =
             Class: PeptideEvidenceClass
         }
 
+    /// For a group of proteins, contains information about all peptides that might be used for its quantification.
     type InferredProteinClassItem<'sequence> = 
         {
             GroupOfProteinIDs: string
@@ -27,7 +30,7 @@ module ProteinInference =
             Class: PeptideEvidenceClass
         }    
 
-    let createInferredProteinClassItem proteinIDs evidenceClass peptideSequences = 
+    let private createInferredProteinClassItem proteinIDs evidenceClass peptideSequences = 
         {
             GroupOfProteinIDs = proteinIDs
             PeptideSequence = peptideSequences
@@ -40,10 +43,21 @@ module ProteinInference =
             PeptideSequence = peptideSequence
             Class = evidenceClass
         }
-    
+ 
+    /// Used to decide wether overlapping groups of proteins should be kept or merged
     type IntegrationStrictness = 
-        | KeepOverlap
-        | KeepSmallerGroup
+        /// Results in the minimal set of proteins which still can explain all measured peptides
+        | Minimal
+        /// All protein groups stay intact
+        | Maximal
+
+    /// Used to decide which peptides should be used for quantification of protein groups
+    type PeptideUsageForQuantification =
+        /// Use only the best matchin peptides
+        | Minimal
+        /// Use all available peptides
+        | Maximal
+
 
     let private increaseClass c =
         match c with
@@ -62,17 +76,15 @@ module ProteinInference =
         | PeptideEvidenceClass.C3a -> "Class3A"
         | PeptideEvidenceClass.C3b -> "Class3B"
 
-    /// Contains all different classes with their associated proteins
-
+    /// Appends a collection of proteins to a single string
     let private proteinGroupToString (proteinGroup:string[]) =
         Array.reduce (fun x y ->  x + ";" + y) proteinGroup
 
-
-    type ClassMap =
+    /// Contains all different classes with their associated proteins
+    type private ClassMap =
         Map<PeptideEvidenceClass,BidirectionalDictionary<string,string>>
 
     module private ClassMap =
-
         ///Creates a new empty ClassMap
         let empty() : ClassMap =
             Map.empty
@@ -83,7 +95,7 @@ module ProteinInference =
             |> Map.add PeptideEvidenceClass.C3a (BidirectionalDictionary<string,string>())
             |> Map.add PeptideEvidenceClass.C3b (BidirectionalDictionary<string,string>())
 
-        ///Searches the Memory Map from highest ranking to lowest ranking class for any of the given proteinIds
+        ///Searches the Memory Map from highest ranking to lowest ranking class for any of the given proteinIds. If an overlap exists, returns its evidence class.
         let searchProts (m:ClassMap) (prots:string[]) =
             match Map.tryFindKey (fun c (d:BidirectionalDictionary<string,string>) ->
                     Array.exists (fun p -> d.ContainsKey p) prots
@@ -98,46 +110,55 @@ module ProteinInference =
             m
 
     ///In a given class finds the overlap between the given and already added proteins and integrates them
-    let integrate (m:ClassMap) c proteinGroups : ClassMap =
-        let int (dict:BidirectionalDictionary<string,string>) =
-            let dict = dict
+    let private findAndIntegrate (m:ClassMap) (c:PeptideEvidenceClass) (proteins:string []) =
+        let merge (dict:BidirectionalDictionary<string,string>) =
             let oldGroups =
-                Array.choose (dict.TryGetByKey >> (Option.map Array.ofSeq)) proteinGroups
+                Array.choose (dict.TryGetByKey >> (Option.map Array.ofSeq)) proteins
                 |> Array.concat
                 |> Array.distinct
                 |> Array.choose (fun pg -> Option.map (fun seqs -> seqs,pg) (dict.TryGetByValue pg))
-            let newSet = Set.ofSeq proteinGroups
-            let newGroup = proteinGroupToString proteinGroups
+            let newSet = Set.ofSeq proteins         
             oldGroups
             |> Array.iter (fun (x,y) -> printfn "%s" ((Seq.toArray >> proteinGroupToString) x) )
             oldGroups
-            |> Array.iter (fun (seqs,group) -> 
+            |> Array.iter (fun (seqs,group) ->
                 let oldSet = Set.ofSeq seqs
                 if Set.isProperSubset newSet oldSet then 
+                    let newGroup = proteinGroupToString proteins
                     dict.RemoveValue group
-                    Seq.iter (fun k -> dict.Add k newGroup) proteinGroups
+                    Seq.iter (fun k -> dict.Add k newGroup) proteins
+                elif Set.isProperSubset oldSet newSet then 
+                    ()
+                else
+                    let protIntersect = Set.intersect newSet oldSet
+                    let proteins = Set.toArray protIntersect
+                    let newGroup = proteinGroupToString proteins
+                    dict.RemoveValue group
+                    Seq.iter (fun k -> dict.Add k newGroup) proteins
             ) 
             dict
-        Map.map (fun ca dict ->
-            if ca = c then int dict
-            else dict) m
+        match ClassMap.searchProts m proteins with
+        | PeptideEvidenceClass.Unknown ->
+            printfn "Search did not return anything"
+            ClassMap.addGroup m c proteins
+        | foundC ->
+            if foundC < c then
+                m
+            else
+                Map.map (fun ca dict ->
+                    if ca = c then merge dict
+                    else dict) m
     
-    let groupIntoClasses (integrationFunction: ClassMap -> PeptideEvidenceClass -> string [] -> ClassMap) (proteinClassItems: ProteinClassItem<'sequence> list ) =
+    let private createClassMap (integrationStrictness:IntegrationStrictness) (proteinClassItems: ProteinClassItem<'sequence> list ) =
         let rec loop (m:ClassMap) proteinClassItems remaining lookingForClass =
-            let findAndIntegrate (m:ClassMap) (c:PeptideEvidenceClass) (proteins:string []) =
-                match ClassMap.searchProts m proteins with
-                | PeptideEvidenceClass.Unknown ->
-                    printfn "Search did not return anything"
-                    ClassMap.addGroup m c proteins
-                | foundC ->
-                    if foundC < c then
-                        m
-                    else
-                        integrationFunction m foundC proteins
             match proteinClassItems with
             | (item:ProteinClassItem<'sequence>) :: l ->
                     if item.Class = lookingForClass then
-                        let m' = (findAndIntegrate m item.Class item.GroupOfProteinIDs)
+                        let m' = 
+                            if integrationStrictness = IntegrationStrictness.Maximal then 
+                                ClassMap.addGroup m item.Class item.GroupOfProteinIDs
+                            else  
+                                (findAndIntegrate m item.Class item.GroupOfProteinIDs)
                         loop m' l remaining lookingForClass
                     else
                         loop m l (item::remaining) lookingForClass
@@ -148,24 +169,61 @@ module ProteinInference =
                     loop m remaining [] (increaseClass lookingForClass)
         loop (ClassMap.empty()) proteinClassItems [] PeptideEvidenceClass.C1a
 
-    let inferSequences integrationFunction (proteinClassItems: ProteinClassItem<'sequence> list) =
-        ///Adds a value v to the set of values already associated with key k
-        let internalAdd (dict:Dictionary<string,HashSet<'sequence>>) (k:string) (v:'sequence) =
-            match dict.TryGetValue(k) with
-            | (true, container) ->
-                container.Add(v) |> ignore
-            | (false,_) -> 
-                let tmp = HashSet<'sequence>(new StructuralEqualityComparer<'sequence>())
-                tmp.Add(v) |> ignore
-                dict.Add(k,tmp) 
-        let classes = groupIntoClasses integrationFunction proteinClassItems
-        let seqDict = System.Collections.Generic.Dictionary<string,HashSet<'sequence>>()
+    /// Used to map the resulting protein groups to the sequences which are used for their quantification
+    let createProteinToPepSequencesMap (proteinClassItems: ProteinClassItem<'sequence> list) =
         proteinClassItems
-        |> List.iter (fun i -> internalAdd seqDict (proteinGroupToString i.GroupOfProteinIDs) i.PeptideSequence)
+        |> List.collect (fun ci -> 
+            let prots = ci.GroupOfProteinIDs
+            List.init prots.Length (fun i -> prots.[i],ci)
+            )
+        |> List.groupBy fst
+        |> List.map (fun (p,l) -> p, List.map snd l)
+        |> Map.ofList
+        //|> Map.ofList
+
+    let inferSequences (integrationStrictness:IntegrationStrictness) (peptideUsageForQuantification:PeptideUsageForQuantification) (proteinClassItems: ProteinClassItem<'sequence> list) =
+        ///Adds a value v to the set of values already associated with key k
+        let classes : ClassMap = createClassMap integrationStrictness proteinClassItems
+        /// Used to map the resulting protein groups to the sequences which are used for their quantification
+        let seqDict = createProteinToPepSequencesMap proteinClassItems
+        printfn "finish setup"
         classes
         |> Seq.collect (fun kv -> 
             let c = kv.Key
-            kv.Value.GetArrayOfValues |> Seq.map (fun group -> createInferredProteinClassItem group c (Seq.toArray (seqDict.Item group)))
+            let d = kv.Value
+            d.GetArrayOfValues 
+            |> Seq.map (fun group -> 
+                let prots = Option.get (d.TryGetByValue group)
+                let protSet = Set.ofSeq prots
+                let potentialCandidates = 
+                    prots
+                    |> Seq.collect (fun prot -> 
+                        seqDict.[prot]
+                        |> Seq.choose (fun protClassItem -> 
+                            let set = Set.ofArray protClassItem.GroupOfProteinIDs
+                            if Set.isSubset protSet set then
+                                Some protClassItem
+                            else 
+                                None
+                            )
+                        )
+                if peptideUsageForQuantification = PeptideUsageForQuantification.Maximal then 
+                    potentialCandidates
+                    |> Seq.map (fun pci -> pci.PeptideSequence)
+                    |> Seq.toArray
+                    |> Array.distinct
+                    |> createInferredProteinClassItem group c 
+                else 
+                    let withLength = 
+                        potentialCandidates
+                        |> Seq.map (fun pci -> pci.GroupOfProteinIDs.Length,pci)
+                    let min = Seq.minBy fst withLength |> fst
+                    Seq.filter (fst >> ((=) min)) withLength
+                    |> Seq.map (snd >> (fun pci -> pci.PeptideSequence))
+                    |> Seq.toArray
+                    |> Array.distinct
+                    |> createInferredProteinClassItem group c
+                )
             )
 
             
