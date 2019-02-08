@@ -1495,7 +1495,8 @@ module SearchDB =
                                     (peptideContainer |> List.ofArray)
                 ) 
             |> Db.bulkInsert cn
-            |> ignore                
+            |> ignore 
+            cn.Open()
             cn
 
     /// Returns a list of proteins retrieved by PepsequenceID

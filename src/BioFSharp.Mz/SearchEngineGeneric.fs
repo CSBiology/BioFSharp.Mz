@@ -8,7 +8,7 @@ module SearchEngineGeneric =
 
     module OrderedCache =
 
-        /////                
+        /////                    
         let private getTheoSpecsWithMem predictTheoSpec (spectrumCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses>) =
             if possiblePeptideInfos.IsEmpty then []
             else 
