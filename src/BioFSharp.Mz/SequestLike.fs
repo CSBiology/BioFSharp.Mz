@@ -15,7 +15,7 @@ module SequestLike =
 
     /// normalize the intensities within a window to maximum of the window
     /// Attention shortens the array  (cuts)
-    let windowNormalizeIntensities (intensities:Vector<float>) (numberOfWindows:int) =
+    let private windowNormalizeIntensities (intensities:Vector<float>) (numberOfWindows:int) =
         // finds max within range
         let rec findMax (array:Vector<float>) (cMax:float) (lowerLimit:int) (counter:int)  =
             if counter < lowerLimit then
@@ -39,8 +39,8 @@ module SequestLike =
             normToMaxSqrtInPlace tmpIntensities (windowSize * (i - 1)) (windowSize * i - 1) 
         tmpIntensities
     
-    ///
-    let predictIntensitySimpleModel (ionType:Ions.IonTypeFlag) (charge:float) =
+    /// Predicts the intensity of a theoretical peak based on the given charge and iontype.
+    let private predictIntensitySimpleModel (ionType:Ions.IonTypeFlag) (charge:float) =
         match ionType with 
         | iontype when ionType.HasFlag Ions.IonTypeFlag.Unknown     -> 1.  / charge
         | iontype when ionType.HasFlag Ions.IonTypeFlag.Diagnostic  -> 1.  / charge
@@ -56,8 +56,8 @@ module SequestLike =
         | iontype when ionType.HasFlag Ions.IonTypeFlag.Z           -> 0.2 / charge
         | _                                                         -> 0.2 / charge
 
-    ///
-    let predictOf (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
+    /// Converts the fragment ion ladder to a theoretical Sequestlike spectrum at a given charge state. 
+    let private theoSpecOf (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
         let predictPeak charge (taggedMass: TaggedMass.TaggedMass) = 
             Peak((Mass.toMZ taggedMass.Mass charge), (predictIntensitySimpleModel (taggedMass.Iontype) charge))
         let rec recloop (ions) (charge) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
@@ -74,8 +74,8 @@ module SequestLike =
         [| for z = 1. to maxcharge do
                 yield! recloop [] z fragments |]
 
-    ///
-    let shiftedVectorSum (plusMinusMaxDelay:int) (vector:Vector<float>) =
+    /// Computes the autocorrelation of the vector +/- plusMinusMaxDelay.
+    let private autoCorrelation (plusMinusMaxDelay:int) (vector:Vector<float>) =
         let shifted (vector:Vector<float>) (tau:int) =
             vector
             |> Vector.mapi
@@ -96,21 +96,23 @@ module SequestLike =
         (plus + minus)
         |> Vector.map (fun x ->  x / (float plusMinusMaxDelay * 2.))
        
-    ///
-    let createShiftedMatrix (plusMinusMaxDelay:int) (array:float[]) =
-        let colNumber = array.Length
-        Array2D.init (plusMinusMaxDelay * 2 + 1) colNumber
-            (fun i ii ->
-                let ni = (i - plusMinusMaxDelay)
-                let index = ii - ni
-                if (index < 0) || (index > colNumber - 1) then 
-                    0.
-                else
-                    array.[index] )
+    /////
+    //let private createShiftedMatrix (plusMinusMaxDelay:int) (array:float[]) =
+    //    let colNumber = array.Length
+    //    Array2D.init (plusMinusMaxDelay * 2 + 1) colNumber
+    //        (fun i ii ->
+    //            let ni = (i - plusMinusMaxDelay)
+    //            let index = ii - ni
+    //            if (index < 0) || (index > colNumber - 1) then 
+    //                0.
+    //            else
+    //                array.[index] )
 
-    /// Amino acid sequence (peptide) to sequest-like predicted intensity array
-    let peaksToNormalizedIntensityArray (lowerScanLimit,upperScanLimit) charge ionSeries =         
-        let psi  = predictOf charge ionSeries  
+    /// Converts the fragment ion ladder to a theoretical Sequestlike spectrum at a given charge state. 
+    /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
+    /// that are not within the scanLimits.
+    let predictOf (lowerScanLimit,upperScanLimit) charge ionSeries =         
+        let psi  = theoSpecOf charge ionSeries  
         let npsi = PeakArray.peaksToNearestUnitDaltonBinVector psi lowerScanLimit upperScanLimit        
         npsi
 
@@ -125,10 +127,10 @@ module SequestLike =
     /// Measured spectrum to sequest-like normalized intensity array
     /// minus auto-correlation (delay 75 -> like in original sequest algorithm)
     /// ! Uses 10 as number of windows for window normalization (like in original sequest algorithm)    
-    let spectrumToIntensityArrayMinusAutoCorrelation (lowerScanLimit,upperScanLimit) (spectrum:PeakArray<_>) =
+    let private spectrumToIntensityArrayMinusAutoCorrelation (lowerScanLimit,upperScanLimit) (spectrum:PeakArray<_>) =
         let si  = PeakArray.peaksToNearestUnitDaltonBinVector spectrum lowerScanLimit upperScanLimit
         let nsi = windowNormalizeIntensities si 10    
-        let nsi' = shiftedVectorSum 75 nsi
+        let nsi' = autoCorrelation 75 nsi
         (nsi - nsi')  
 
 
@@ -136,7 +138,7 @@ module SequestLike =
     ///  (Xcorr(top hit) - Xcorr(n)) / Xcorr(top hit). Thus, the deltaCn for the top hit is
     ///  (Xcorr(top hit) - Xcorr(top hit)) / Xcorr(top hit) = 0.
     /// if the best Score equals 0. this function returns returns 1 for every PSM
-    let calcNormDeltaBestToRest (sourceList:SearchEngineResult<'a> list) =
+    let private calcNormDeltaBestToRest (sourceList:SearchEngineResult<'a> list) =
         match sourceList with
         | h1::rest -> 
             if h1.Score <= 0. then sourceList |> List.map (fun sls -> {sls with NormDeltaBestToRest = 1.})
@@ -151,7 +153,7 @@ module SequestLike =
     // Iterates over the score ranked PSMs and computes the score difference between adjacent
     // PSMs normalized by the Score of the best ranked PSM.
     /// if the best Score equals 0., this function returns returns 0 for every PSM.
-    let calcNormDeltaNext (sourceList:SearchEngineResult<'a> list) =        
+    let private calcNormDeltaNext (sourceList:SearchEngineResult<'a> list) =        
         let rec loop normF acc l = 
             match l with 
             | hLast::[] ->
@@ -168,14 +170,20 @@ module SequestLike =
             loop normFactor [] sourceList                  
         | []       -> []
 
-    /// TODO: DELTA THISTOMeanNomalizedDelta
 
-    ///
-    let calcXCorr (p_nis:Vector<float>) (ms_nis:Vector<float>) =
+    /// Calculates the Cross-Correlation of p_nis and ms_nis
+    let private calcXCorr (p_nis:Vector<float>) (ms_nis:Vector<float>) =
         let tmp = Vector.dot p_nis ms_nis 
         if tmp < 0. then 0. else tmp 
 
-    ///
+
+    /// Converts the fragment ion ladders to a theoretical Sequestlike spectrum at a given charge state. 
+    /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
+    /// that are not within the scanLimits.
+    let getTheoSpecs scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*FragmentMasses>) =
+        TheoreticalSpectra.getTheoSpecs predictOf scanlimits chargeState possiblePeptideInfos
+
+    /// Calculates the SequestLike Scores for all peptides (possiblePeptideInfos).
     let calcSequestLikeScoresRevDecoy calcIonSeries (massfunction:Formula.Formula -> float) (scanlimits) (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>>) spectrumID =                             
         // measured normailzed intensity array (spectrum) minus auto-correlation
         let ms_nis =  spectrumToIntensityArrayMinusAutoCorrelation scanlimits spectrum
@@ -190,24 +198,21 @@ module SequestLike =
                               let sequence = lookUpResult.BioSequence        
                               let ionSeries = calcIonSeries massfunction sequence    
                               //predicted  normalized intensity array (spectrum) 
-                              let p_nis = peaksToNormalizedIntensityArray scanlimits fCharge ionSeries 
+                              let p_nis = predictOf scanlimits fCharge ionSeries 
                               let xcorr = calcXCorr p_nis ms_nis
-                              let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass  (List.length sequence) xcorr nan nan
+                              let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass  (List.length sequence) xcorr nan nan
                               
                               let revPeptide_decoy = sequence |> List.rev
                               let ionSeries_decoy  = calcIonSeries massfunction revPeptide_decoy
-                              let p_nis_decoy      = peaksToNormalizedIntensityArray scanlimits fCharge ionSeries_decoy 
+                              let p_nis_decoy      = predictOf scanlimits fCharge ionSeries_decoy 
                               let xcorr_decoy      = calcXCorr p_nis_decoy ms_nis
-                              let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass revPeptide_decoy.Length xcorr_decoy nan nan
+                              let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass revPeptide_decoy.Length xcorr_decoy nan nan
                               targetScore::decoyScore::acc  
                      ) []
         calcNormDeltaBestToRest (ides |> List.sortBy (fun sls -> - sls.Score))        
         |> calcNormDeltaNext
-    ///
-    let getTheoSpecs scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*FragmentMasses>) =
-        TheoreticalSpectra.getTheoSpecs peaksToNormalizedIntensityArray scanlimits chargeState possiblePeptideInfos
 
-    ///          
+    /// Calculates the SequestLike Scores for all theoretical spectra.    
     let calcSequestScore scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<Vector<float>>>) spectrumID = 
         let fCharge = float chargeState
         // measured normailzed intensity array (spectrum) minus auto-correlation
@@ -222,18 +227,18 @@ module SequestLike =
                               let sequence = lookUpResult.BioSequence
                               let p_nis = theoreticalSpectrum.TheoSpec 
                               let xcorr = calcXCorr p_nis ms_nis
-                              let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr nan nan
+                              let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr nan nan
                               
                               let p_nis_decoy = theoreticalSpectrum.DecoyTheoSpec
                               let xcorr_decoy = calcXCorr p_nis_decoy  ms_nis
-                              let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr_decoy nan nan
+                              let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr_decoy nan nan
                               targetScore::decoyScore::acc  
                      ) []
 
         calcNormDeltaBestToRest (ides  |> List.sortBy (fun sls -> - sls.Score))        
         |> calcNormDeltaNext
         
-    ///          
+    /// Calculates the sequestLike Scores for all theoretical spectra. Implemented using Async parallel. 
     let calcSequestScoreParallel scanlimits (spectrum:PeakArray<_>) scanTime chargeState isolationWindowTargetMz (theoreticalSpectra:list<TheoreticalSpectrum<Vector<float>>>) spectrumID = 
         let fCharge = float chargeState
         // measured normailzed intensity array (spectrum) minus auto-correlation
@@ -245,11 +250,11 @@ module SequestLike =
             let sequence = lookUpResult.BioSequence
             let p_nis = theoreticalSpectrum.TheoSpec 
             let xcorr = calcXCorr p_nis ms_nis
-            let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr nan nan
+            let targetScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr nan nan
                               
             let p_nis_decoy      = theoreticalSpectrum.DecoyTheoSpec
             let xcorr_decoy      = calcXCorr p_nis_decoy ms_nis
-            let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.RevStringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr_decoy nan nan
+            let decoyScore = createSearchEngineResult SearchEngineResult.SearchEngine.SEQUESTLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass sequence.Length xcorr_decoy nan nan
             [targetScore;decoyScore]
         
         let ides = 

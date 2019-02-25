@@ -27,15 +27,15 @@ module PercolatorWrapper =
             /// will be used to eliminate the lower scoring target or decoy PSM(s) of each scan+expMass combination. 
             /// If the input PSMs are detected to be coming from a concatenated search, this option will be turned on automatically, 
             /// as this is incompatible with the mix-max method. In case this detection fails, turn this option on explicitly.
-            | PostProcessing_TargedDecoyCompetition
+            | PostProcessing_TargetDecoyCompetition
 
         let private stringOfgO (gO:GeneralOptions) =
             match gO with 
-            | Help                                   -> "--help" 
-            | VerbosityOfOutput nr                   -> "--verbose " + string nr   
-            | OnlyPSMs                               -> "--only-psms " 
-            | PostProcessing_MIXMAX                  -> "--post-processing-mix-max "
-            | PostProcessing_TargedDecoyCompetition  -> "--post-processing-tdc "
+            | Help                                   -> " --help" 
+            | VerbosityOfOutput nr                   -> " --verbose " + string nr   
+            | OnlyPSMs                               -> " --only-psms " 
+            | PostProcessing_MIXMAX                  -> " --post-processing-mix-max "
+            | PostProcessing_TargetDecoyCompetition  -> " --post-processing-tdc "
 
         type FileInputOptions = 
             /// Read percolator tab-input format (pin-tab) from standard input.
@@ -51,8 +51,8 @@ module PercolatorWrapper =
             match fIO with 
             | PINTAB                info -> fileInfoToPath info 
             | PINXML                info -> fileInfoToPath info 
-            | DeprecatedPINXML      info -> "--xml-in " + fileInfoToPath info 
-            | SkipSchemeValidation ->       "--no-schema-validation "
+            | DeprecatedPINXML      info -> " --xml-in " + fileInfoToPath info 
+            | SkipSchemeValidation ->       " --no-schema-validation "
     
         type FileOutputOptions =
             /// Output tab delimited results of peptides to a file instead of stdout (will be ignored if used with -U option)
@@ -76,15 +76,15 @@ module PercolatorWrapper =
 
         let private stringOfFOO fileInfoToPath (fOO: FileOutputOptions) = 
             match fOO with 
-            | POUTTAB_Peptides info      -> "--results-peptides " + fileInfoToPath info 
-            | POUTTAB_DecoyPeptides info -> "--decoy-results-peptides " + fileInfoToPath info 
-            | POUTTAB_PSMs info          -> "--results-psms " + fileInfoToPath info 
-            | POUTTAB_DecoyPSMs info     -> "--decoy-results-psms " + fileInfoToPath info 
-            | POUTTAB_Proteins info      -> "--results-proteins " + fileInfoToPath info 
-            | POUTTAB_DecoyProteins info -> "--decoy-results-proteins " + fileInfoToPath info 
-            | POUTTAB_Features info      -> "--tab-out " + fileInfoToPath info 
-            | POUTXML info               -> "--xmloutput " + fileInfoToPath info 
-            | IncludeDecoysInXML         -> "--decoy-xml-output " 
+            | POUTTAB_Peptides info      -> " --results-peptides " + fileInfoToPath info 
+            | POUTTAB_DecoyPeptides info -> " --decoy-results-peptides " + fileInfoToPath info 
+            | POUTTAB_PSMs info          -> " --results-psms " + fileInfoToPath info 
+            | POUTTAB_DecoyPSMs info     -> " --decoy-results-psms " + fileInfoToPath info 
+            | POUTTAB_Proteins info      -> " --results-proteins " + fileInfoToPath info 
+            | POUTTAB_DecoyProteins info -> " --decoy-results-proteins " + fileInfoToPath info 
+            | POUTTAB_Features info      -> " --tab-out " + fileInfoToPath info 
+            | POUTXML info               -> " --xmloutput " + fileInfoToPath info 
+            | IncludeDecoysInXML         -> " --decoy-xml-output " 
         
         type SVMFeatureOptions =
             /// Output final SVM weights to given file. (one per line)
@@ -106,14 +106,14 @@ module PercolatorWrapper =
         
         let private stringOfSVMFO fileInfoToPath (sVMFO: SVMFeatureOptions) = 
             match sVMFO with 
-            | OUT_SVMWeights info   -> "--weights " + fileInfoToPath info 
-            | IN_SVMWeights info    -> "--init-weights " + fileInfoToPath info 
+            | OUT_SVMWeights info   -> " --weights " + fileInfoToPath info 
+            | IN_SVMWeights info    -> " --init-weights " + fileInfoToPath info 
             // TODO
             // | FEATURENAME info          -> "--results-psms " + info.FullName
-            | UnitNorm              -> "--unitnorm "
-            | Override              -> "--override "
-            | DOC                   -> "--doc " 
-            | Klammer               -> "--klammer "  
+            | UnitNorm              -> " --unitnorm "
+            | Override              -> " --override "
+            | DOC                   -> " --doc " 
+            | Klammer               -> " --klammer "  
 
         type SVMTrainingOptions =
             /// Only train an SVM on a subset of PSMs, and use the resulting score vector to evaluate the other PSMs. 
@@ -138,15 +138,15 @@ module PercolatorWrapper =
 
         let private stringOfSVMTO (sVMTO: SVMTrainingOptions) = 
             match sVMTO with 
-            | SubsetTraining v               -> "--subset-max-train " + string v
-            | Cpos v                         -> "--Cpos "  + string v
-            | Cneg v                         -> "--Cneg" + string v
-            | FDR_CrossValidation v          -> "--testFDR " + string v
-            | FDR_PositiveExamples v         -> "--trainFDR " + string v
-            | MaxIterations n                 -> "--maxiter " + string n 
-            | QuickValidation                -> "--quick-validation "
-            | ReportPerfomanceAfterIteration -> "--test-each-iteration "
-            | SeedRndNumberGenerator v       -> "--seed" + string v
+            | SubsetTraining v               -> " --subset-max-train " + string v
+            | Cpos v                         -> " --Cpos "  + string v
+            | Cneg v                         -> " --Cneg" + string v
+            | FDR_CrossValidation v          -> " --testFDR " + string v
+            | FDR_PositiveExamples v         -> " --trainFDR " + string v
+            | MaxIterations n                 -> " --maxiter " + string n 
+            | QuickValidation                -> " --quick-validation "
+            | ReportPerfomanceAfterIteration -> " --test-each-iteration "
+            | SeedRndNumberGenerator v       -> " --seed" + string v
 
         type ProteinInferenceOptions_Percolator = 
             /// Use the picked protein-level FDR to infer protein probabilities. Provide the fasta file as the argument to this flag, 
@@ -172,11 +172,11 @@ module PercolatorWrapper =
 
         let private stringOfPI fileInfoToPath (pI:ProteinInferenceOptions_Percolator) =
             match pI with 
-            | Fasta info                    -> "--picked-protein " + fileInfoToPath info 
+            | Fasta info                    -> " --picked-protein " + fileInfoToPath info 
             | ProteinDecoyPattern pattern   -> " --protein-decoy-pattern " + pattern
-            | Protease protease             -> "--protein-enzyme " + protease
-            | ReportProteinFragments        -> "--protein-report-fragments " 
-            | ReportProteinDuplicates       -> "--protein-report-duplicates "         
+            | Protease protease             -> " --protein-enzyme " + protease
+            | ReportProteinFragments        -> " --protein-report-fragments " 
+            | ReportProteinDuplicates       -> " --protein-report-duplicates "         
 
         type ProteinInferenceOptions_FIDO = 
             /// Use the Fido algorithm to infer protein probabilities.
@@ -210,19 +210,19 @@ module PercolatorWrapper =
 
         let private stringOfPIF (pIF:ProteinInferenceOptions_FIDO) =
             match pIF with 
-            | UseFido                -> "--fido-protein "
-            | Alpha value            -> "--fido-alpha " + string value
-            | Beta value             -> "--fido-beta " + string value
-            | Gamma value            -> "--fido-gamma " + string value
-            | EmpricialQValue        -> "--fido-empirical-protein-q " 
-            | QValueThreshold value  -> "--fido-gridsearch-mse-threshold " + string value 
+            | UseFido                -> " --fido-protein "
+            | Alpha value            -> " --fido-alpha " + string value
+            | Beta value             -> " --fido-beta " + string value
+            | Gamma value            -> " --fido-gamma " + string value
+            | EmpricialQValue        -> " --fido-empirical-protein-q " 
+            | QValueThreshold value  -> " --fido-gridsearch-mse-threshold " + string value 
 
         //let private stringOfSUF (sUF:SpeedUpOptions_FIDO) =
         //    match sUF with 
-            | GridSearchDepth value      -> "--fido-gridsearch-depth " + string value
-            | GridSearchSpeed value      -> "--fido-fast-gridsearch " + string value
-            | NoSubgraphSplitting        -> "--fido-no-split-large-components " 
-            | ProteinTruncationThreshold -> "--fido-protein-truncation-threshold " 
+            | GridSearchDepth value      -> " --fido-gridsearch-depth " + string value
+            | GridSearchSpeed value      -> " --fido-fast-gridsearch " + string value
+            | NoSubgraphSplitting        -> " --fido-no-split-large-components " 
+            | ProteinTruncationThreshold -> " --fido-protein-truncation-threshold " 
             
 
         type PercolatorParams =

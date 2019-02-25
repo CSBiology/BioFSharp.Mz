@@ -1,9 +1,20 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net461</TargetFramework>
+    <TargetFrameworks>net47;netstandard2.0</TargetFrameworks>
+    <RootNamespace>BioFSharp.Mz</RootNamespace>
+    <AssemblyName>BioFSharp.Mz</AssemblyName>
+    <Name>BioFSharp.Mz</Name>
+    <OutputType>Library</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Optional: Declare that the Repository URL can be published to NuSpec -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Optional: Embed source files that are not tracked by the source control manager to the PDB -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Optional: Include PDB in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="FDRControl.fs" />
     <Compile Include="Peak.fs" />
     <Compile Include="PeakArray.fs" />
     <Compile Include="PeakList.fs" />
@@ -17,17 +28,13 @@
     <Compile Include="SearchEngineResult.fs" />
     <Compile Include="SequestLike.fs" />
     <Compile Include="AndromedaLike.fs" />
-    <Compile Include="AndromedaLike_old.fs" />
     <Compile Include="SearchEngineGeneric.fs" />
     <Compile Include="Quantification.fs" />
+    <Compile Include="ProteinInference.fs" />
     <Compile Include="PercolatorWrapper.fs" />
     <Compile Include="WorkflowLanguage.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="MathNet.Numerics" Version="4.4.0" />
-    <PackageReference Include="MathNet.Numerics.FSharp" Version="4.4.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.107" />
+    <None Include="paket.references" />
+    <None Include="paket.template" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\BioFSharp\src\BioFSharp.IO\BioFSharp.IO.fsproj" />
@@ -36,11 +43,14 @@
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux.IO\FSharpAux.IO.fsproj" />
     <ProjectReference Include="..\..\..\FSharpAux\src\FSharpAux\FSharpAux.fsproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="4.3.3" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
+    <PackageReference Include="Microsoft.ML" Version="0.7.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Microsoft.ML" Version="0.7.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="System.ValueTuple" Version="4.4.0" />
+    <Reference Include="System.Transactions" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

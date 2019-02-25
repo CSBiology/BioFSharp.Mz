@@ -8,7 +8,7 @@ module SearchEngineGeneric =
 
     module OrderedCache =
 
-        /////                
+        /////                    
         let private getTheoSpecsWithMem predictTheoSpec (spectrumCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) scanlimits chargeState (possiblePeptideInfos:list<LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses>) =
             if possiblePeptideInfos.IsEmpty then []
             else 
@@ -73,7 +73,7 @@ module SearchEngineGeneric =
 
 
         /// 
-        let generateTheoSpectra calcIonSeries (massfunction:Formula.Formula -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) 
+        let generateTheoSpectra calcIonSeries (massfunction:IBioItem -> float) (lookUpF: float -> float -> LookUpResult<AminoAcids.AminoAcid> list) (lookUpCache: Cache.Cache<int64,((LookUpResult<AminoAcids.AminoAcid>*Fragmentation.FragmentMasses) list)>) 
                 (andromedaCache: Cache.Cache<int64,TheoreticalSpectrum<'a> list>) (sequestCache: Cache.Cache<int64,TheoreticalSpectrum<'b> list>)  chargeState scanlimits
                     (maxMemory:int64)  lowerMass upperMass = 
             ///
@@ -85,5 +85,5 @@ module SearchEngineGeneric =
             ///
             let lookUpResults = SearchDB.getPeptideLookUpWithMemBy calcIonSeries massfunction lookUpF lookUpCache lowerMass upperMass
             let andromedaResults = getTheoSpecsWithMem AndromedaLike.predictOf andromedaCache scanlimits chargeState lookUpResults
-            let sequestResults   = getTheoSpecsWithMem SequestLike.peaksToNormalizedIntensityArray sequestCache scanlimits chargeState lookUpResults
+            let sequestResults   = getTheoSpecsWithMem SequestLike.predictOf sequestCache scanlimits chargeState lookUpResults
             andromedaResults,sequestResults

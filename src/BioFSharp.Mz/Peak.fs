@@ -14,11 +14,6 @@ type Peak(mz:float,intensity:float) =
             member this.Mz = mz
             member this.Intensity = intensity
 
-type Tag<'t,'v> = {
-    Meta : 't
-    Data : 'v
-    }
-
 type PeakFamily<'a> = {
     MainPeak       : 'a
     DependentPeaks : 'a list   
@@ -54,17 +49,7 @@ module Peaks =
         let pk = Peak(mzData, intensityData)
         pk
     
-    ///
-    let createTag meta data = {
-        Meta=meta
-        Data=data
-        }
-    
-    ///
-    let createPeakAnnotation (meta:'a) (peak:Peak) =
-        let pA = createTag meta peak
-        pA
-    
+
     ///
     let createPeakFamily mainPeak dependentPeaks = {
         MainPeak       = mainPeak
