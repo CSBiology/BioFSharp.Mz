@@ -4,16 +4,16 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("BioFSharp.Mz")>]
 [<assembly: AssemblyProductAttribute("BioFSharp.Mz")>]
-[<assembly: AssemblyDescriptionAttribute("BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data.")>]
-[<assembly: AssemblyVersionAttribute("0.0.1")>]
-[<assembly: AssemblyFileVersionAttribute("0.0.1")>]
+[<assembly: AssemblyDescriptionAttribute("BioFSharp.Mz - modular computational proteomics")>]
+[<assembly: AssemblyVersionAttribute("0.0.111")>]
+[<assembly: AssemblyFileVersionAttribute("0.0.111")>]
 [<assembly: AssemblyConfigurationAttribute("Release")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "BioFSharp.Mz"
     let [<Literal>] AssemblyProduct = "BioFSharp.Mz"
-    let [<Literal>] AssemblyDescription = "BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data."
-    let [<Literal>] AssemblyVersion = "0.0.1"
-    let [<Literal>] AssemblyFileVersion = "0.0.1"
+    let [<Literal>] AssemblyDescription = "BioFSharp.Mz - modular computational proteomics"
+    let [<Literal>] AssemblyVersion = "0.0.111"
+    let [<Literal>] AssemblyFileVersion = "0.0.111"
     let [<Literal>] AssemblyConfiguration = "Release"
