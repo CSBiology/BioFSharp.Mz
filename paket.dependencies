@@ -9,16 +9,34 @@ nuget Expecto
 nuget Expecto.BenchmarkDotNet
 nuget Expecto.FsCheck
 nuget Expecto.VisualStudio.TestAdapter version_in_path: true
-nuget FSharp.Plotly
-nuget System.Data.SQLite.Core
+
+git https://github.com/CSBiology/FSharpAux.git nuget Packages: /
+
+nuget FSharpAux
+nuget FSharpAux.IO
+
+git https://github.com/CSBiology/FSharp.Stats.git nuget Packages: /
+
+nuget FSharp.Stats
+
+git https://github.com/CSBiology/BioFSharp.git nuget Packages: /
+
+nuget BioFSharp
+nuget BioFSharp.IO
+
+nuget System.Data.SQLite 
+
 clitool dotnet-fake
 
 group Formatting
 source https://nuget.org/api/v2
 source https://ci.appveyor.com/nuget/fsharp-formatting
+	
 
-nuget FSharp.Formatting prerelease
-nuget FSharp.Formatting.CommandTool prerelease
+nuget FSharp.Formatting ~> 3.0.0-beta01
+nuget FSharp.Formatting.CommandTool ~> 3.0.0-beta01
+
+
 
 group FakeBuild
 source https://api.nuget.org/v3/index.json

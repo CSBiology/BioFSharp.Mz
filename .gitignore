@@ -184,5 +184,4 @@ docsrc/content/release-notes.md
 .fake
 docsrc/tools/FSharp.Formatting.svclog
 docs
-/docsrc/content/data/Creinhardtii_fullN15_ProteinNTerm_final2_biofinal.db
-/docsrc/content/data/Chlamy_JGI5_5(Cp_Mp)_OnePep.fasta
+temp
