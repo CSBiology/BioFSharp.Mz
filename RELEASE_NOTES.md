@@ -1,2 +1,2 @@
-#### 0.0.1 - Tuesday, August 14, 2018
+#### 0.0.1 - Thursday, April 25, 2019
 * Initial release

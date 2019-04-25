@@ -6,16 +6,75 @@
 
 #load "./.fake/build.fsx/intellisense.fsx"
 
+
 open System.IO
 open Fake.Core
 open Fake.Core.TargetOperators
 open Fake.DotNet
 open Fake.IO
 open Fake.IO.FileSystemOperators
+open Fake.IO.Globbing
 open Fake.IO.Globbing.Operators
 open Fake.DotNet.Testing
 open Fake.Tools
 open Fake.Api
+open Fake.Tools.Git
+
+[<AutoOpen>]
+module TemporaryDocumentationHelpers =
+
+    type LiterateArguments =
+        { ToolPath : string
+          Source : string
+          OutputDirectory : string 
+          Template : string
+          ProjectParameters : (string * string) list
+          LayoutRoots : string list 
+          FsiEval : bool }
+
+
+    let private run toolPath command = 
+        if 0 <> Process.execSimple ((fun info ->
+                { info with
+                    FileName = toolPath
+                    Arguments = command }) >> Process.withFramework) System.TimeSpan.MaxValue
+
+        then failwithf "FSharp.Formatting %s failed." command
+
+    let createDocs p =
+        let toolPath = Tools.findToolInSubPath "fsformatting.exe" (Directory.GetCurrentDirectory() @@ "lib/Formatting")
+
+        let defaultLiterateArguments =
+            { ToolPath = toolPath
+              Source = ""
+              OutputDirectory = ""
+              Template = ""
+              ProjectParameters = []
+              LayoutRoots = [] 
+              FsiEval = false }
+
+        let arguments = (p:LiterateArguments->LiterateArguments) defaultLiterateArguments
+        let layoutroots =
+            if arguments.LayoutRoots.IsEmpty then []
+            else [ "--layoutRoots" ] @ arguments.LayoutRoots
+        let source = arguments.Source
+        let template = arguments.Template
+        let outputDir = arguments.OutputDirectory
+        let fsiEval = if arguments.FsiEval then [ "--fsieval" ] else []
+
+        let command = 
+            arguments.ProjectParameters
+            |> Seq.map (fun (k, v) -> [ k; v ])
+            |> Seq.concat
+            |> Seq.append 
+                   (["literate"; "--processdirectory" ] @ layoutroots @ [ "--inputdirectory"; source; "--templatefile"; template; 
+                      "--outputDirectory"; outputDir] @ fsiEval @ [ "--replacements" ])
+            |> Seq.map (fun s -> 
+                   if s.StartsWith "\"" then s
+                   else sprintf "\"%s\"" s)
+            |> String.separated " "
+        run arguments.ToolPath command
+        printfn "Successfully generated docs for %s" source
 
 // --------------------------------------------------------------------------------------
 // START TODO: Provide project-specific details below
@@ -33,17 +92,17 @@ let project = "BioFSharp.Mz"
 
 // Short summary of the project
 // (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary = "BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data."
+let summary = "BioFSharp.Mz - modular computational proteomics"
 
 // Longer description of the project
 // (used as a description for NuGet package; line breaks are automatically cleaned up)
-let description = "BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data."
+let description = "BioFSharp.Mz - modular computational proteomics"
 
 // List of author names (for NuGet package)
-let author = "\"David Zimmer\"; \"Timo Mühlhaus\""
+let author = "David Zimmer, Timo Mühlhaus"
 
 // Tags for your project (for NuGet package)
-let tags = "BioFSharp BioFSharp.Mz Proteomics Mz"
+let tags = "proteomics FSharp massspec computational"
 
 // File system information
 let solutionFile  = "BioFSharp.Mz.sln"
@@ -224,8 +283,8 @@ let githubLink = sprintf "https://github.com/%s/%s" github_release_user gitName
 // Specify more information about your project
 let info =
   [ "project-name", "BioFSharp.Mz"
-    "project-author", "\"David Zimmer\"; \"Timo Mühlhaus\""
-    "project-summary", "BioFSharp.Mz aims to be a user-friendly library, offering a variety of implementations of well known or newly developed algorithms associated with the computational analysis of mass spectrometry data."
+    "project-author", "David Zimmer, Timo Mühlhaus"
+    "project-summary", "BioFSharp.Mz - modular computational proteomics"
     "project-github", githubLink
     "project-nuget", "http://nuget.org/packages/BioFSharp.Mz" ]
 
@@ -254,11 +313,15 @@ Target.create "ReferenceDocs" (fun _ ->
                         DirectoryInfo.getSubDirectories d |> Array.filter(fun x -> x.FullName.ToLower().Contains("net45"))
                     let net47Bin =
                         DirectoryInfo.getSubDirectories d |> Array.filter(fun x -> x.FullName.ToLower().Contains("net47"))
+                    let netStandardBin =
+                        DirectoryInfo.getSubDirectories d |> Array.filter(fun x -> x.FullName.ToLower().Contains("netstandard"))
+                    
                     if net45Bin.Length > 0 then
                         d.Name, net45Bin.[0]
-                    else
+                    elif net47Bin.Length > 0 then
                         d.Name, net47Bin.[0]
-
+                    else
+                        d.Name, netStandardBin.[0]
                 dInfo.GetFiles()
                 |> Array.filter (fun x ->
                     x.Name.ToLower() = (sprintf "%s.dll" name).ToLower())
@@ -315,13 +378,15 @@ Target.create "Docs" (fun _ ->
             | Some lang -> layoutRootsAll.[lang]
             | None -> layoutRootsAll.["en"] // "en" is the default language
 
-        FSFormatting.createDocs (fun args ->
+        createDocs (fun args ->
             { args with
                 Source = content
                 OutputDirectory = output
                 LayoutRoots = layoutRoots
                 ProjectParameters  = ("root", root)::info
-                Template = docTemplate } )
+                Template = docTemplate 
+                FsiEval = true
+                } )
 )
 
 // --------------------------------------------------------------------------------------
@@ -329,15 +394,26 @@ Target.create "Docs" (fun _ ->
 
 //#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 //open Octokit
+
 Target.create "ReleaseDocs" (fun _ ->
     let tempDocsDir = "temp/gh-pages"
     Shell.cleanDir tempDocsDir |> ignore
     Git.Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
-
     Shell.copyRecursive "docs" tempDocsDir true |> printfn "%A"
     Git.Staging.stageAll tempDocsDir
     Git.Commit.exec tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
     Git.Branches.push tempDocsDir
+)
+
+Target.create "ReleaseLocal" (fun _ ->
+    let tempDocsDir = "temp/gh-pages"
+    Shell.cleanDir tempDocsDir |> ignore
+    Shell.copyRecursive "docs" tempDocsDir true  |> printfn "%A"
+    Shell.replaceInFiles 
+        (seq {
+            yield "href=\"/" + project + "/","href=\""
+            yield "src=\"/" + project + "/","src=\""}) 
+        (Directory.EnumerateFiles tempDocsDir |> Seq.filter (fun x -> x.EndsWith(".html")))
 )
 
 Target.create "Release" (fun _ ->
@@ -384,6 +460,18 @@ Target.create "Release" (fun _ ->
 Target.create "BuildPackage" ignore
 Target.create "GenerateDocs" ignore
 
+Target.create "GitReleaseNuget" (fun _ ->
+    let tempNugetDir = "temp/nuget"
+    Shell.cleanDir tempNugetDir |> ignore
+    Git.Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "nuget" tempNugetDir
+    let files = Directory.EnumerateFiles bin 
+    Shell.copy tempNugetDir files
+    Git.Staging.stageAll tempNugetDir
+    Git.Commit.exec tempNugetDir (sprintf "Update git nuget packages for version %s" release.NugetVersion)
+    Git.Branches.push tempNugetDir
+    Shell.cleanDir tempNugetDir |> ignore
+)
+
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
@@ -412,5 +500,16 @@ Target.create "All" ignore
 "BuildPackage"
   ==> "PublishNuget"
   ==> "Release"
+
+"Clean"
+  ==> "AssemblyInfo"
+  ==> "Build"
+  ==> "CopyBinaries"
+  ==> "RunTests"
+  ==> "NuGet"
+  ==> "GitReleaseNuget"
+
+"All"
+  ==> "ReleaseLocal"
 
 Target.runOrDefaultWithArguments "All"
