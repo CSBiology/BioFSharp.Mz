@@ -58,8 +58,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".build", ".build", "{7C6D08
 		build.sh = build.sh
 	EndProjectSection
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "BioFSharp.MzConsole", "src\BioFSharp.MzConsole\BioFSharp.MzConsole.fsproj", "{B7339FEC-0891-4DF8-8BB5-0B806A64F32F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,10 +72,6 @@ Global
 		{5349BEF1-33E9-421A-8211-587105C7F81E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5349BEF1-33E9-421A-8211-587105C7F81E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5349BEF1-33E9-421A-8211-587105C7F81E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B7339FEC-0891-4DF8-8BB5-0B806A64F32F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B7339FEC-0891-4DF8-8BB5-0B806A64F32F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B7339FEC-0891-4DF8-8BB5-0B806A64F32F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B7339FEC-0891-4DF8-8BB5-0B806A64F32F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

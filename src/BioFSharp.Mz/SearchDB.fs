@@ -1460,6 +1460,7 @@ module SearchDB =
         let cn = new SQLiteConnection(connectionString)
         cn.Open()
         cn
+        
 
     ///
     let connectOrCreateDB sdbParams =
