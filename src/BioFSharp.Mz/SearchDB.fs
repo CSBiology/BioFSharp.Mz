@@ -354,6 +354,11 @@ module SearchDB =
                 let cmd = new SQLiteCommand(querystring, cn)    
                 cmd.ExecuteNonQuery()
 
+            ///
+            let setIndexOnModSequenceAndGlobalMod (cn:SQLiteConnection) =
+                let querystring = "CREATE INDEX IF NOT EXISTS SequenceAndGlobalModIndex ON ModSequence (Sequence,GlobalMod)"
+                let cmd = new SQLiteCommand(querystring, cn)    
+                cmd.ExecuteNonQuery()
             //let setSequenceIndexOnPepSequence (cn:SQLiteConnection) = 
             //    let querystring = "CREATE INDEX SequenceIndex ON PepSequence (Sequence ASC) "
             //    let cmd = new SQLiteCommand(querystring, cn)    
@@ -835,6 +840,21 @@ module SearchDB =
                     | true -> (reader.GetInt32(0), reader.GetInt32(1),reader.GetDouble(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5))  
                     | false -> -1,-1,nan,-1L,"",""
                 )
+
+            /// Prepares statement to select a ModSequence entry by Massrange (Between selected Mass -/+ the selected toleranceWidth)
+            let prepareSelectMassByModSequenceAndGlobalMod (cn:SQLiteConnection) =
+                let querystring = "SELECT RealMass FROM ModSequence WHERE Sequence=@sequence AND GlobalMod=@globalMod"
+                let cmd = new SQLiteCommand(querystring, cn) 
+                cmd.Parameters.Add("@sequence", Data.DbType.String) |> ignore
+                cmd.Parameters.Add("@globalMod", Data.DbType.Int32) |> ignore
+                (fun (sequence:string) (globalMod:int) ->
+                cmd.Parameters.["@sequence"].Value  <- sequence
+                cmd.Parameters.["@globalMod"].Value <- globalMod
+                use reader = cmd.ExecuteReader()            
+                match reader.Read() with 
+                | true  -> Some (reader.GetDouble(0))
+                | false -> Option.None)
+
                 //#define SQLITE_ERROR        1   /* SQL error or missing database */
                 //#define SQLITE_INTERNAL     2   /* Internal logic error in SQLite */
                 //#define SQLITE_PERM         3   /* Access permission denied */
