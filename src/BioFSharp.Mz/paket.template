@@ -1,4 +1,4 @@
-type file
+﻿type project
 id BioFSharp.Mz
 title
     BioFSharp.Mz
