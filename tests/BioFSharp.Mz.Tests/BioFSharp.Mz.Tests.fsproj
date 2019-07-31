@@ -11,7 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Generators.fs" />
-    <Compile Include="Fragmentation.fs" />
+    <Compile Include="Core.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="RunTests.fs" />
     <None Include="paket.references" />

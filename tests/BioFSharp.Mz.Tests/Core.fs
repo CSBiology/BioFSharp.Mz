@@ -4,7 +4,7 @@ open Expecto
 open FsCheck
 open GeneratorsCode
 
-module Tests =
+module Core =
     let config10k = { FsCheckConfig.defaultConfig with maxTest = 10000}
     // bug somewhere:  registering arbitrary generators causes Expecto VS test adapter not to work
     //let config10k = { FsCheckConfig.defaultConfig with maxTest = 10000; arbitrary = [typeof<Generators>] }
