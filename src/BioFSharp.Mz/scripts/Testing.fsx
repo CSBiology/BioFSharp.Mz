@@ -1,5 +1,5 @@
 ﻿#r "netstandard"
-
+#r @"../../../\packages\System.Data.SQLite.Core\lib\net46\System.Data.SQLite.dll"
 #r @"../../../packages\BioFSharp\lib\netstandard2.0\BioFSharp.dll"
 #r @"../../../bin\BioFSharp.Mz\netstandard2.0\BioFSharp.Mz.dll"
 #r @"../../../packages\FSharpAux.IO\lib\netstandard2.0\FSharpAux.IO.dll"
@@ -18,7 +18,6 @@ ModificationInfo.Table.NH3_loss |> massF
 
 let res  = Fragmentation.Series.bOfBioList massF BioSeq
 let res2 = Fragmentation.Series.bOfBioList massF BioSeqH
-
 let light = res.[0].MainPeak.Mass
 let lightLoss = res.[0].DependentPeaks.[0].Mass
 light - lightLoss 
@@ -27,6 +26,31 @@ let heavy = res2.[0].MainPeak.Mass
 
 let deph20Loss = res2.[0].DependentPeaks.[0].Mass
 
+
+open System.Data.SQLite
+let cn = SearchDB.getDBConnection @"C:\Users\david\source\repos\ProteomIQon\src\ProteomIQon\Scripts\GiadaTest.db"
+let p = SearchDB.getSDBParamsBy @"C:\Users\david\source\repos\ProteomIQon\src\ProteomIQon\Scripts\GiadaTest.db"
+let look = SearchDB.getThreadSafePeptideLookUpFromFileBy cn p
+
+let psm = look 1001. 1002.
+
+let modPep = 
+    psm
+    |> List.find (fun x -> x.GlobalMod = 0)
+
+modPep.Mass
+modPep.BioSequence |> List.sumBy massF |> (+) (Formula.monoisoMass Formula.Table.H2O)  
+
+let resH = Fragmentation.Series.bOfBioList massF modPep.BioSequence 
+let light' = resH.[0].MainPeak.Mass
+let Loss' = resH.[0].DependentPeaks.[0].Mass
+
+light' - Loss' 
+
+
+let heavy = res2.[0].MainPeak.Mass
+
+let deph20Loss = res2.[0].DependentPeaks.[0].Mass
 heavy - deph20Loss  
 
 

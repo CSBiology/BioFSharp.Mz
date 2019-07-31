@@ -1,3 +1,6 @@
+#### 0.0.113 - Thursday, August 1, 2019
+* refactor Fragmentation module according to changes in BioFSharp.Mz release 0.1.1
+
 #### 0.0.112 - Thursday, April 25, 2019
 * paket template fix
 
