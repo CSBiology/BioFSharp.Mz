@@ -34,6 +34,7 @@
     <Compile Include="ProteinInference.fs" />
     <Compile Include="PercolatorWrapper.fs" />
     <Compile Include="WorkflowLanguage.fs" />
+    <Compile Include="Testing.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>

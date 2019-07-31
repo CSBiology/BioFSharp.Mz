@@ -26,3 +26,50 @@ let heavywaterl = res2.[0].DependentPeaks.[1].Mass
 
 heavy - light
 heavywaterl - heavy
+
+
+let ala = AminoAcids.Ala |> massF
+let aminoLoss = 
+    AminoAcids.setModification ModificationInfo.Table.NH3_loss AminoAcids.Ala
+    |> massF
+
+ala - aminoLoss 
+
+//let alaH = 
+//for i = 10 to 100000 do 
+//        //AminoAcids.setModification ModificationInfo.Table.N15 AminoAcids.Ala
+//        AminoAcids.Ala |> massF 
+    //ModificationInfo.Table.NH3_loss 
+    //|> massF
+
+   
+//let aminoLossH = 
+{ModificationInfo.Table.NH3_loss with Name= "Haralddddd"; Modify =  ModificationInfo.Table.NH3_loss.Modify >> ModificationInfo.Table.N15.Modify } 
+|> massF
+
+let x = {ModificationInfo.Table.NH3_loss with Name="moped"; Modify =  >>  ModificationInfo.Table.N15 .Modify } 
+x|> massF
+
+
+AminoAcids.Ala = (AminoAcids.Ala |> (AminoAcids.setModification ModificationInfo.Table.NH3_loss)  )
+(AminoAcids.Ala |> (AminoAcids.setModification ModificationInfo.Table.NH3_loss)  ) = (AminoAcids.Ala |> (AminoAcids.setModification ModificationInfo.Table.NH3_loss)  )
+(AminoAcids.Ala |> (AminoAcids.setModification ModificationInfo.Table.NH3_loss)  ) = (AminoAcids.Ala |> (AminoAcids.setModification {ModificationInfo.Table.NH3_loss with Name="moped"; Modify = ModificationInfo.Table.NH3_loss.Modify >>  ModificationInfo.Table.N15 .Modify })  )
+
+
+// Modifies existing modification (md) using (md')
+let modifyModification (md':ModificationInfo.Modification) (md:ModificationInfo.Modification) =
+    {md with Name = sprintf "%s_%s" md.Name md'.Name ; Modify = md.Modify >>  md'.Modify} 
+
+
+
+let heavyNh3 = modifyModification ModificationInfo.Table.N15 ModificationInfo.Table.NH3_loss
+
+ModificationInfo.Table.NH3_loss |> massF
+
+heavyNh3 |> massF
+
+ModificationInfo.Table.N15 |> massF
+
+
+
+

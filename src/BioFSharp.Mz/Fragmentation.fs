@@ -5,7 +5,15 @@ module Fragmentation =
     open System
     open FSharpAux
     open BioFSharp
+    open BioFSharp.AminoAcids
     open BioFSharp.IO
+    
+    /// Modifies existing modification (md) using (md')
+    let private setIsotopicModification (isoMod:ModificationInfo.Modification) (md:ModificationInfo.Modification) =
+        match isoMod.Location with 
+        | ModificationInfo.ModLocation.Isotopic -> 
+            {md with Name = sprintf "%s_%s" md.Name isoMod.Name ; Modify = md.Modify >> isoMod.Modify} 
+        | _ -> md // failwith "The modification used as isoMod' was not an isotopic modification."
 
     /// Set of amino acids that are prone to cleave off an H2O molecule of their side chain uppon fragmentation.
     let waterLossSet = set [AminoAcids.Ser;AminoAcids.Thr;AminoAcids.Glu;AminoAcids.Asp;]
@@ -15,11 +23,19 @@ module Fragmentation =
 
     /// Returns true if the amino acid "a" is prone to cleave off an H2O molecule of their side chain uppon fragmentation.
     let isWaterLoss a =
-        waterLossSet.Contains(a)
+        match a with
+        | Mod(a,_) -> 
+            waterLossSet.Contains(a)
+        | a        -> 
+            waterLossSet.Contains(a)
 
     /// Returns true if the amino acid "a" is prone to cleave off an NH2 molecule of their side chain uppon fragmentation.
     let isAminoLoss a =
-        aminoLossSet.Contains(a)
+        match a with
+        | Mod(a,_) -> 
+            aminoLossSet.Contains(a)
+        | a        -> 
+            aminoLossSet.Contains(a)
 
     //TODO: Implement neutral loss logic 
     //let isNeutralLoss a = 
@@ -96,25 +112,40 @@ module Fragmentation =
             ///
             let lossNH3Ion  = 
                 if aminoloss then 
-                    let mass = mainPeak.Mass - (NH3_loss |> massfunction)
-                    Some (TaggedMass.createTaggedNH3Loss mainPeak.Iontype mass)
+                    match aa with 
+                    | Mod(a,mds) -> 
+                        let mass = 
+                            mds 
+                            |> List.filter (fun x -> x.IsBiological && x.Location = ModLocation.Isotopic)
+                            |> List.fold  (fun acc md -> setIsotopicModification md acc) NH3_loss
+                            |> massfunction 
+                            |> (+) mainPeak.Mass
+                        Some (TaggedMass.createTaggedNH3Loss mainPeak.Iontype mass)
+                    | a ->
+                        let mass = mainPeak.Mass + (NH3_loss |> massfunction)
+                        Some (TaggedMass.createTaggedNH3Loss mainPeak.Iontype mass)
                 else  
                     None
             ///
             let lossH2OIon  = 
-                if waterloss then 
-                    let mass = mainPeak.Mass - (H2O_loss |> massfunction) 
-                    Some (TaggedMass.createTaggedH2OLoss mainPeak.Iontype mass)
+                if waterloss then
+                    match aa with 
+                    | Mod(a,mds) -> 
+                        let mass = 
+                            mds 
+                            |> List.filter (fun x -> x.IsBiological && x.Location = ModLocation.Isotopic)
+                            |> List.fold  (fun acc md -> setIsotopicModification md acc) H2O_loss
+                            |> massfunction 
+                            |> (+) mainPeak.Mass
+                        Some (TaggedMass.createTaggedH2OLoss mainPeak.Iontype mass)
+                    | a ->
+                        let mass = mainPeak.Mass + (H2O_loss |> massfunction) 
+                        Some (TaggedMass.createTaggedH2OLoss mainPeak.Iontype mass)
                 else  
                     None
             ///
-            let dependentPeaks = 
-                [lossNH3Ion;lossH2OIon;]//lossNeutral] 
-                |> List.fold (fun acc annotPeak -> 
-                                match annotPeak with 
-                                | Some peak -> peak :: acc
-                                | None      -> acc
-                                ) []
+            let dependentPeaks = [lossNH3Ion;lossH2OIon;] |> List.choose id //lossNeutral] 
+                
             createPeakFamily mainPeak dependentPeaks
 
 
@@ -142,19 +173,10 @@ module Fragmentation =
                             None
                     let peakFamilies =  
                         if ionSeries.HasFlag(IonTypeFlag.B) then 
-                            [aPeakFam;Some bPeakFam;cPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [aPeakFam;Some bPeakFam;cPeakFam] |> List.choose id
                         else 
-                            [aPeakFam;cPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [aPeakFam;cPeakFam] |> List.choose id
+
                     series (aa'::rest) waterLoss' aminoLoss' (peakFamilies@fragMasses) bPeakFam.MainPeak.Mass
                 | aa::rest     ->
                     let waterLoss'  = waterLoss || (isWaterLoss aa)
@@ -169,19 +191,9 @@ module Fragmentation =
                             None
                     let peakFamilies =  
                         if ionSeries.HasFlag(IonTypeFlag.B) then 
-                            [aPeakFam;Some bPeakFam;]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [aPeakFam;Some bPeakFam;] |> List.choose id
                         else 
-                            [aPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [aPeakFam] |> List.choose id
                     series [] waterLoss' aminoLoss' (peakFamilies@fragMasses) bPeakFam.MainPeak.Mass
                 | []          -> 
                     fragMasses
@@ -210,19 +222,9 @@ module Fragmentation =
                             None
                     let peakFamilies =  
                         if ionSeries.HasFlag(IonTypeFlag.Y) then 
-                            [zPeakFam;Some yPeakFam;xPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [zPeakFam;Some yPeakFam;xPeakFam]|> List.choose id
                         else 
-                            [zPeakFam;xPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [zPeakFam;xPeakFam] |> List.choose id
                     series (aa'::rest) waterLoss' aminoLoss' (peakFamilies@fragMasses) yPeakFam.MainPeak.Mass
                 | aa::rest     ->
                     let waterLoss'  = waterLoss || (isWaterLoss aa)
@@ -236,19 +238,9 @@ module Fragmentation =
                             None
                     let peakFamilies =  
                         if ionSeries.HasFlag(IonTypeFlag.Y) then 
-                            [zPeakFam;Some yPeakFam;]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [zPeakFam;Some yPeakFam;] |> List.choose id
                         else 
-                            [zPeakFam]
-                            |> List.fold (fun acc peakFam -> 
-                                    match peakFam with 
-                                    | Some peakF -> peakF :: acc
-                                    | None      ->  acc
-                                    ) []
+                            [zPeakFam] |> List.choose id
                     series [] waterLoss' aminoLoss' (peakFamilies@fragMasses) yPeakFam.MainPeak.Mass
                 | []          -> 
                     fragMasses

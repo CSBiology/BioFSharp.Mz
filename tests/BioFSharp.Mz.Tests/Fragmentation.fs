@@ -11,9 +11,9 @@ module Tests =
     let configReplay = { FsCheckConfig.defaultConfig with maxTest = 10000 ; replay = Some <| (1940624926, 296296394) }
 
     [<Tests>]
-    let testSimpleTests =
+    let testCore =
 
-        testList "DomainTypes.Tag" [
+        testList "BioFSharp.Mz.Fragmentation" [
             testCase "equality" <| fun () ->
                 let result = 42
                 Expect.isTrue (result = 42) "Expected True"
