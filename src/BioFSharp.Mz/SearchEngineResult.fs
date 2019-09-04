@@ -7,8 +7,9 @@ open SearchDB
 module SearchEngineResult = 
     
     type SearchEngine = 
-        | AndromedaLike = 0 
-        | SEQUESTLike   = 1
+        | AndromedaLike 
+        | SEQUESTLike   
+        | XTandemLike
 
     type SearchEngineResult<'a> = {
         SearchEngine          : SearchEngine

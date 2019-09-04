@@ -179,10 +179,8 @@ module Quantification =
                 | Option.None            -> 
                     methodOfMoments p 
       
-
-    
-        
-    module MyQuant = 
+ 
+    module HULQ = 
 
         open Integration
         open ParameterEstimation
@@ -213,7 +211,7 @@ module Quantification =
             EstimatedParams             : float []
             StandardErrorOfPrediction   : float
             Area                        : float
-            MeasuredApexIntensity       :float
+            MeasuredApexIntensity       : float
             }
 
         ///
