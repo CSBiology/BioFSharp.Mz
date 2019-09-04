@@ -25,6 +25,75 @@ light - lightLoss
 let heavy = res2.[0].MainPeak.Mass
 
 let deph20Loss = res2.[0].DependentPeaks.[0].Mass
+open Elements
+System.Numerics.Complex(-0.0926829268292669, 22.0592593273255)
+
+open System
+
+let compareComplexNumbers (c1:System.Numerics.Complex) (c2:System.Numerics.Complex) = 
+    (Math.Abs(c1.Real - c2.Real) <= System.Double.Epsilon) &&
+    (Math.Abs(c1.Imaginary - c2.Imaginary) <= System.Double.Epsilon);
+      
+let rootO = 
+    match Elements.Table.O with 
+    | Tri o -> o.Root
+    //| _ -> 
+
+
+
+
+let rootO' =
+    System.Numerics.Complex(-0.0926829268292669, 22.0592593273255),
+    System.Numerics.Complex(-0.0926829268292696, -22.0592593273255)
+let Zn = Multi (createMulti "Zn" (Isotopes.Table.Zn64,Isotopes.Table.Zn64.NatAbundance ) (Isotopes.Table.Zn66,Isotopes.Table.Zn66.NatAbundance) (Isotopes.Table.Zn68,Isotopes.Table.Zn68.NatAbundance) [|Isotopes.Table.Zn67;Isotopes.Table.Zn70|])
+open Formula
+"H2O" |> parseFormulaString |> Formula.monoisoMass
+open Formula
+compareComplexNumbers (fst rootO) (fst rootO)
+//let iso = getSinglePhiM Table.Na 1000000. 2.
+//let iso = getSinglePhiM Table.H 1000000. 2.
+//let iso = getSinglePhiM Table.O 1000000. 2.
+//let iso = getSinglePhiM Zn 1000. 3.
+open FSharpAux
+let massF : IBioItem -> float= BioItem.initMonoisoMassWithMemP  
+[0.. 1000]
+|> List.map (fun x -> massF AminoAcids.Ala)
+[0.. 10000000]
+|> PSeq.map (fun x -> massF AminoAcids.Ala)
+|> Array.ofSeq
+open IsotopicDistribution.MIDA
+/// normalizes istopic distribution probabilities to sum up to 1.
+let normalizeByProbSum minProb (pols: Polynomial list) = 
+    let sum = 
+        pols
+        |> List.filter (fun x -> x.Probability > minProb)
+        |> List.sumBy (fun x -> x.Probability)
+    pols 
+    |> List.map (fun x -> {x with Probability = x.Probability/sum})
+
+
+"LTYYTPDYVVR"
+|> BioList.ofAminoAcidString
+|> BioList.toFormula
+//|> fun f -> Formula.lableElement f Elements.Table.N Elements.Table.Heavy.N15
+//|> (IsotopicDistribution.MIDA.ofFormula (normalizeByProbSum) 0.01 (exp(-20.)) 2)
+|> (IsotopicDistribution.BRAIN.ofFormula 10 )
+
+
+
+"LTYYTPDYVVR"
+|> BioList.ofAminoAcidString
+|> BioList.toFormula
+|> (IsotopicDistribution.BRAIN.ofFormula 25)
+
+BioItem.monoisoMass AminoAcids.Ala 
+   
+   
+//[ Array.iter (fun x -> if x > 0. then do yield x ) [|-50. .. 50.|]]
+
+
+let f = "N100C12O8" |> parseFormulaString 
+#time
 
 
 open System.Data.SQLite

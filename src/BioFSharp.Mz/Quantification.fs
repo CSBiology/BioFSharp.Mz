@@ -191,7 +191,6 @@ module Quantification =
         type PeakModel = 
             | Gaussian of Model
             | EMG of Model 
-            | None 
 
         type FittedPeak = {
             Model                       : PeakModel 
@@ -209,20 +208,22 @@ module Quantification =
             }
 
         type QuantifiedPeak = {
-            Model                       : PeakModel 
+            Model                       : PeakModel option 
             YPredicted                  : float []
             EstimatedParams             : float []
             StandardErrorOfPrediction   : float
             Area                        : float
+            MeasuredApexIntensity       :float
             }
 
         ///
-        let createQuantifiedPeak model yPredicted estimatedParams standardErrorOfPrediction area = {
+        let createQuantifiedPeak model yPredicted estimatedParams standardErrorOfPrediction area measuredApexIntensity = {
             Model                       = model                       
             YPredicted                  = yPredicted                  
             EstimatedParams             = estimatedParams             
             StandardErrorOfPrediction   = standardErrorOfPrediction   
-            Area                        = area                        
+            Area                        = area      
+            MeasuredApexIntensity       = measuredApexIntensity
             }
 
         /// Return Option
@@ -239,24 +240,16 @@ module Quantification =
                 match model with 
                 | Gaussian f -> f
                 | EMG f      -> f 
-            let modelFunction = 
-                ///
-                let fit =
-                    try
-                        let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 xData yData                                   
-                        let y' = Array.map (fun xValue -> modelF.GetFunctionValue estParams.[estParams.Count-1] xValue) xData
-                        Some (estParams.[estParams.Count-1], y')
-                    with 
-                    | ex -> 
-                        printfn "%A" ex
-                        Option.None     
-                match fit with 
-                | Some (estParams,y') -> 
-                    let sEoE_Gauss = standardErrorOfPrediction (float solverOptions.InitialParamGuess.Length) y' yData
-                    Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y')
-                | Option.None  -> Option.None 
-            modelFunction
-
+                
+            try
+                let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 xData yData |> Seq.last                                  
+                let y' = Array.map (fun xValue -> modelF.GetFunctionValue estParams xValue) xData
+                let sEoE_Gauss = standardErrorOfPrediction (float solverOptions.InitialParamGuess.Length) y' yData
+                Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y')
+            with 
+            | ex -> 
+                printfn "%A" ex
+                Option.None      
 
         ///
         let tryFitGaussian initAmp initMeanX initStdev xData yData =
@@ -302,8 +295,8 @@ module Quantification =
                 let intensityAtx = pF.GetFunctionValue (fit.EstimatedParams |> vector) fit.EstimatedParams.[1]
                 integralOfEMGBy fit.EstimatedParams.[1] fit.EstimatedParams.[2] fit.EstimatedParams.[3] intensityAtx fit.EstimatedParams.[1]
             match fit.Model with 
-            | Gaussian m -> integralOfGaussianOf fit
-            | EMG      m -> integralOfEMGOf fit
+            | Gaussian _ -> integralOfGaussianOf fit
+            | EMG      _ -> integralOfEMGOf fit
 
 
         ///
@@ -316,18 +309,15 @@ module Quantification =
                 | Some g, Some emg -> 
                     let finalFit   = selectModel [|g;emg|]
                     let area       = calcArea finalFit
-                    createQuantifiedPeak finalFit.Model finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area
-                | Some finalFit, Option.None    ->
+                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area p.Apex.YVal
+                | Some finalFit, Option.None  | Option.None, Some finalFit -> 
                     let area       = calcArea finalFit
-                    createQuantifiedPeak finalFit.Model finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area
-                | Option.None, Some finalFit -> 
-                    let area       = calcArea finalFit
-                    createQuantifiedPeak finalFit.Model finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area
-                | _,_                       ->
+                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area p.Apex.YVal
+                | _                       ->
                     let area = trapezEstAreaOf p.XData p.YData
-                    createQuantifiedPeak None [||] [||] nan area
+                    createQuantifiedPeak Option.None [||] [||] nan area p.Apex.YVal
             | Option.None   -> 
                 let area = trapezEstAreaOf p.XData p.YData
-                createQuantifiedPeak None [||] [||] nan area               
+                createQuantifiedPeak Option.None [||] [||] nan area p.Apex.YVal              
 
           
