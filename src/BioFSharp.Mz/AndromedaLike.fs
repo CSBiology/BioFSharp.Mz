@@ -230,7 +230,7 @@ module AndromedaLike =
         let lnq = Math.Log(1.0-p1)
         let mutable acc = 0.
         for i = k to n do 
-            acc <- acc + Math.Exp(-lnProb (float n) (float k) lnp lnq)
+            acc <- acc + Math.Exp(-lnProb (float n) (float i) lnp lnq)
         acc <- -Math.Log(acc)
         10. * acc / Math.Log(10.)
 
