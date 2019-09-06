@@ -289,58 +289,6 @@ module AndromedaLike =
                     )
         |> Array.maxBy (fun x -> x.Score) 
                             
-    /// Calculates sequest-like delta normalized by best score to the best score.
-    ///  (Xcorr(top hit) - Xcorr(n)) / Xcorr(top hit). Thus, the deltaCn for the top hit is
-    ///  (Xcorr(top hit) - Xcorr(top hit)) / Xcorr(top hit) = 0.
-    /// if the best Score equals 0. this function returns returns 1 for every PSM
-    let calcNormDeltaBestToRest (sourceList:SearchEngineResult<MatchingScore> list) =
-        match sourceList with
-        | h1::rest -> 
-            if h1.Score.Score <= 0. then sourceList |> List.map (fun sls -> {sls with NormDeltaBestToRest = 1.})
-            else
-            sourceList
-            |> List.map
-                (fun sls ->
-                    let deltaAndroScore = (h1.Score.Score - sls.Score.Score) / h1.Score.Score
-                    { sls with NormDeltaBestToRest = deltaAndroScore } )      
-        | []       -> []
-    
-    /// Calculates sequest-like delta normalized by best score to the best score.
-    ///  (Xcorr(top hit) - Xcorr(n)) / Xcorr(top hit). Thus, the deltaCn for the top hit is
-    ///  (Xcorr(top hit) - Xcorr(top hit)) / Xcorr(top hit) = 0.
-    /// if the best Score equals 0. this function returns returns 1 for every PSM
-    let calcNormDeltaBestToRestBy (sourceList:SearchEngineResult<float> list) =
-        match sourceList with
-        | h1::rest ->
-            if h1.Score <= 0. then sourceList |> List.map (fun sls -> {sls with NormDeltaBestToRest = 1.})
-            else
-            sourceList
-            |> List.map
-                (fun sls ->
-                    let deltaAndroScore = (h1.Score - sls.Score) / h1.Score
-                    { sls with NormDeltaBestToRest = deltaAndroScore } )      
-        | []       -> []
-    
-    // Iterates over the score ranked PSMs and computes the score difference between adjacent
-    // PSMs normalized by the Score of the best ranked PSM.
-    /// if the best Score equals 0., this function returns returns 0 for every PSM.
-    let calcNormDeltaNext (sourceList:SearchEngineResult<'a> list) =        
-        let rec loop normF acc l = 
-            match l with 
-            | hLast::[] ->
-                {hLast with NormDeltaNext = 0.}::acc
-                |> List.rev 
-                
-            | hi::hii -> 
-                let normDeltaNext = (hi.Score - hii.[0].Score) / normF 
-                loop normF ({hi with NormDeltaNext = normDeltaNext}::acc) hii 
-        match sourceList with
-        | h1::rest -> 
-            let normFactor = h1.Score
-            if normFactor <= 0. then sourceList |> List.map (fun als -> {als with NormDeltaNext = 0.})
-            else
-            loop normFactor [] sourceList   
-        | []       -> []
 
     /// Converts the fragment ion ladders to a theoretical Sequestlike spectrum at a given charge state. 
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
@@ -380,7 +328,7 @@ module AndromedaLike =
                                 let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc                        
                          ) []
-        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))  
+        calcNormDeltaBestToRest (ides  |> List.sortBy (fun sls -> - sls.Score))  
         |> calcNormDeltaNext
 
 
@@ -411,7 +359,7 @@ module AndromedaLike =
                                 let decoyResult = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScore.Score nan nan
                                 targetResult :: decoyResult :: acc     
                      ) []
-        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
+        calcNormDeltaBestToRest (ides  |> List.sortBy (fun sls -> - sls.Score))       
         |> calcNormDeltaNext
 
    
@@ -445,6 +393,6 @@ module AndromedaLike =
             |> Async.Parallel
             |> Async.RunSynchronously
             |> List.concat    
-        calcNormDeltaBestToRestBy (ides  |> List.sortBy (fun sls -> - sls.Score))       
+        calcNormDeltaBestToRest (ides  |> List.sortBy (fun sls -> - sls.Score))       
         |> calcNormDeltaNext
 
