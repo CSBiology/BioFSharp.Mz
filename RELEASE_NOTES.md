@@ -1,3 +1,6 @@
+#### 0.0.115 - Friday, September 6, 2019
+* add XScoring, a combination of XTandemLike and AndromedaLike Scoring
+
 #### 0.0.114 - Wednesday, September 4, 2019
 * add ProteinInference
 
