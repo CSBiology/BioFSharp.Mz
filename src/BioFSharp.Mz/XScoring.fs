@@ -10,7 +10,7 @@ open SearchEngineResult
 open FSharpAux.Array
 open FSharp.Stats.SpecialFunctions.Factorial
 
-module AndromedaLike =
+module XScoring =
     
     type MatchingScore = {
         Score   : float 
