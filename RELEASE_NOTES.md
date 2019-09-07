@@ -1,3 +1,6 @@
+#### 0.0.116 - Saturday, September 7, 2019
+* refactor according to changes latest BioFSharp Release
+
 #### 0.0.115 - Friday, September 6, 2019
 * add XScoring, a combination of XTandemLike and AndromedaLike Scoring
 

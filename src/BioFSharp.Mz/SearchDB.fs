@@ -46,7 +46,7 @@ module SearchDB =
         Name=name; SourceEl=sourceEl; TargetEl=targetEl  }
                       
     let createIsotopicMod (infoIsotopic: SearchInfoIsotopic) = 
-        createModification infoIsotopic.Name true ModLocation.Isotopic (fun f -> Formula.lableElement f infoIsotopic.SourceEl infoIsotopic.TargetEl)
+        createModification infoIsotopic.Name true ModLocation.Isotopic (fun f -> Formula.replaceElement f infoIsotopic.SourceEl infoIsotopic.TargetEl)
         
     let getModBy (smodi:SearchModification) = 
         let modLoc = 
