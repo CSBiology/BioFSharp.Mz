@@ -27,6 +27,7 @@
     <Compile Include="TheoreticalSpectra.fs" />
     <Compile Include="SearchEngineResult.fs" />
     <Compile Include="SequestLike.fs" />
+    <Compile Include="SequestLikeNetTheo.fs" />
     <Compile Include="AndromedaLike.fs" />
     <Compile Include="XScoring.fs" />
     <Compile Include="SearchEngineGeneric.fs" />

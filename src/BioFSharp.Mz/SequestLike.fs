@@ -6,7 +6,7 @@ open Fragmentation
 open TheoreticalSpectra
 open FSharpAux
 open SearchEngineResult
-
+open Ions
 open FSharp.Stats
 //open MathNet.Numerics
 //open MathNet.Numerics.LinearAlgebra.Double
@@ -42,37 +42,38 @@ module SequestLike =
     /// Predicts the intensity of a theoretical peak based on the given charge and iontype.
     let private predictIntensitySimpleModel (ionType:Ions.IonTypeFlag) (charge:float) =
         match ionType with 
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Unknown     -> 1.  / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Diagnostic  -> 1.  / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Neutral     -> 0.6 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Immonium    -> 0.6 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.lossNH3     -> 0.2 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.lossH2O     -> 0.2 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.A           -> 0.2 / charge   
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.B           -> 1.  / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.C           -> 0.2 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.X           -> 0.2 / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Y           -> 1.  / charge
-        | iontype when ionType.HasFlag Ions.IonTypeFlag.Z           -> 0.2 / charge
-        | _                                                         -> 0.2 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Unknown    ionT -> 1.  / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Diagnostic ionT -> 1.  / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Neutral    ionT -> 0.6 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Immonium   ionT -> 0.6 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.lossNH3    ionT -> 0.2 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.lossH2O    ionT -> 0.2 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.A          ionT -> 0.2 / charge   
+        | ionT when hasFlag Ions.IonTypeFlag.B          ionT -> 1.  / charge
+        | ionT when hasFlag Ions.IonTypeFlag.C          ionT -> 0.2 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.X          ionT -> 0.2 / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Y          ionT -> 1.  / charge
+        | ionT when hasFlag Ions.IonTypeFlag.Z          ionT -> 0.2 / charge
+        | _                                                  -> 0.2 / charge
+
+    let private setVectorInplace (vector:Vector<float>) charge maxIndex lowerScanLimit (taggedMass:TaggedMass.TaggedMass) = 
+        let index = int(System.Math.Round (Mass.toMZ taggedMass.Mass charge) ) - lowerScanLimit 
+        if index < maxIndex-1 && index > -1 then
+            vector.[index] <- max vector.[index] (predictIntensitySimpleModel (taggedMass.Iontype) charge) 
 
     /// Converts the fragment ion ladder to a theoretical Sequestlike spectrum at a given charge state. 
-    let private theoSpecOf (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
-        let predictPeak charge (taggedMass: TaggedMass.TaggedMass) = 
-            Peak((Mass.toMZ taggedMass.Mass charge), (predictIntensitySimpleModel (taggedMass.Iontype) charge))
-        let rec recloop (ions) (charge) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
-            match fragments with
-            | fragment::rest ->  
-                let mainPeak = 
-                    predictPeak charge fragment.MainPeak
-                let dependendPeaks =
-                    fragment.DependentPeaks
-                    |> List.map (predictPeak charge)
-                recloop (mainPeak::dependendPeaks@ions) charge rest
-            | []            -> ions
-            
-        [| for z = 1. to maxcharge do
-                yield! recloop [] z fragments |]
+    let theoSpecOf (lowerScanLimit,upperScanLimit) (maxcharge:float) (fragments:PeakFamily<TaggedMass.TaggedMass> list) =
+        let lowerScanLimit = int lowerScanLimit
+        let upperScanLimit = int upperScanLimit
+        let maxIndex = upperScanLimit - lowerScanLimit + 1        
+        let vector = Vector.create (maxIndex-1) 0.
+        fragments 
+        |> List.iter (fun p ->  
+            let peaks = p.MainPeak::p.DependentPeaks
+            [1. .. maxcharge]  
+            |> List.iter (fun ch -> peaks |> List.iter (setVectorInplace vector ch maxIndex lowerScanLimit) ) 
+            )
+        vector
 
     /// Computes the autocorrelation of the vector +/- plusMinusMaxDelay.
     let private autoCorrelation (plusMinusMaxDelay:int) (vector:Vector<float>) =
@@ -112,9 +113,8 @@ module SequestLike =
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
     /// that are not within the scanLimits.
     let predictOf (lowerScanLimit,upperScanLimit) charge ionSeries =         
-        let psi  = theoSpecOf charge ionSeries  
-        let npsi = PeakArray.peaksToNearestUnitDaltonBinVector psi lowerScanLimit upperScanLimit        
-        npsi
+        theoSpecOf (lowerScanLimit,upperScanLimit) charge ionSeries      
+        
 
 //    /// Measured spectrum to sequest-like normalized intensity array
 //    /// ! Uses 10 as number of windows for window normalization (like in original sequest algorithm)    
