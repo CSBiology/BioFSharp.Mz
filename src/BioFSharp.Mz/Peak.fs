@@ -34,12 +34,15 @@ module Ions =
         | lossH2O       =  256
         | lossNH3       =  512
         | Immonium      = 1024
-        | Neutral       = 2018
-        | Diagnostic    = 4036
-        | Unknown       = 8072
+        | Neutral       = 2048
+        | Diagnostic    = 4096
+        | Unknown       = 8192
       
     let createIonTypeList (ionTypeFlag: IonTypeFlag) =
         System.Enum.GetValues(ionTypeFlag.GetType()).Cast<IonTypeFlag>().Where(ionTypeFlag.HasFlag)
+
+    let hasFlag (ionType:IonTypeFlag) (ionType':IonTypeFlag) = 
+        (int ionType &&& int ionType') <> 0
 
 
 module Peaks =
