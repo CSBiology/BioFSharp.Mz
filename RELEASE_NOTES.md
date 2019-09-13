@@ -1,3 +1,7 @@
+#### 0.0.117 - Friday, September 13, 2019
+* include faster hasFlag function
+* speed improvements in SequestLike: faster computation of theoretical spectra. 
+
 #### 0.0.116 - Saturday, September 7, 2019
 * refactor according to changes latest BioFSharp Release
 
