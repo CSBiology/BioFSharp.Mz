@@ -17,7 +17,7 @@ nuget FSharpAux.IO
 
 git https://github.com/CSBiology/FSharp.Stats.git nuget Packages: /
 
-nuget FSharp.Stats
+nuget FSharp.Stats ~> 0.1.0
 
 git https://github.com/CSBiology/BioFSharp.git nuget Packages: /
 
