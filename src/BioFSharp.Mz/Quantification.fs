@@ -184,7 +184,7 @@ module Quantification =
 
         open Integration
         open ParameterEstimation
-        open LevenbergMarquardt
+        open LevenbergMarquardtConstrained
 
         type PeakModel = 
             | Gaussian of Model
@@ -233,31 +233,47 @@ module Quantification =
             | Option.None   -> Array.minBy (fun p -> abs(p.Apex.XVal - x)) peaks 
       
         ///
-        let tryFit model solverOptions xData yData =
+        let tryFit model solverOptions lowerBound upperBound xData yData =
             let modelF = 
                 match model with 
                 | Gaussian f -> f
                 | EMG f      -> f 
                 
             try
-                let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 xData yData |> Seq.last                                  
+                let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 lowerBound upperBound xData yData |> Seq.last                                  
                 let y' = Array.map (fun xValue -> modelF.GetFunctionValue estParams xValue) xData
                 let sEoE_Gauss = standardErrorOfPrediction (float solverOptions.InitialParamGuess.Length) y' yData
                 Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y')
             with 
             | ex -> 
                 printfn "%A" ex
+                printfn "xData: %A" xData
+                printfn "yData: %A" yData
+                printfn "InitialParamGuess: %A" solverOptions.InitialParamGuess
+                printfn "lowerBound: %A" lowerBound
+                printfn "upperBound: %A" upperBound
                 Option.None      
 
         ///
         let tryFitGaussian initAmp initMeanX initStdev xData yData =
+            let deltaAmp = initAmp * 0.3
+            let deltaX = Math.Min((Array.max xData - Array.min xData) / 2.,10.) 
+            let deltaStabw = initStdev * 0.5
+            let lowerBound = [|Math.Max(initAmp-deltaAmp,0.); Math.Max(initMeanX-deltaX,0.); Math.Max(initStdev-deltaStabw,0.)|] |> vector
+            let upperBound = [|initAmp+deltaAmp; initMeanX+deltaX; initStdev+deltaStabw|] |> vector
             let solverOptions = createSolverOption 0.00001 0.001 1000 [|initAmp;initMeanX;initStdev|]
-            tryFit (Gaussian Table.gaussModel) solverOptions xData yData
+            tryFit (Gaussian Table.gaussModel) solverOptions lowerBound upperBound xData yData
 
         ///
         let tryFitEMG initAmp initMeanX initStdev initTau xData yData =
+            let deltaAmp = initAmp * 0.3
+            let deltaX = Math.Min((Array.max xData - Array.min xData) / 2.,10.) 
+            let deltaStabw = initStdev * 0.5
+            let deltaTau = initTau
+            let lowerBound = [|Math.Max(initAmp-deltaAmp,0.); Math.Max(initMeanX-deltaX,0.); Math.Max(initStdev-deltaStabw,0.);Math.Max(initTau-deltaTau,0.00001)|] |> vector
+            let upperBound = [|initAmp+deltaAmp; initMeanX+deltaX; initStdev+deltaStabw; initTau+deltaTau|] |> vector
             let solverOptions = createSolverOption 0.00001 0.001 1000 [|initAmp;initMeanX;initStdev;initTau|]
-            tryFit (EMG Table.emgModel) solverOptions xData yData
+            tryFit (EMG Table.emgModel) solverOptions lowerBound upperBound xData yData
 
         ///
         let selectModel (models: FittedPeak []) = 
@@ -301,7 +317,7 @@ module Quantification =
         let quantifyPeak (p: IdentifiedPeak ) =
             match estimateMoments p with 
             | Some moments -> 
-                let gaussian = tryFitGaussian moments.ModeY moments.MeanX moments.Std  p.XData p.YData
+                let gaussian = tryFitGaussian moments.ModeY moments.MeanX moments.Std p.XData p.YData
                 let emg      = tryFitEMG moments.ModeY moments.MeanX moments.Std moments.Tau p.XData p.YData
                 match gaussian, emg with 
                 | Some g, Some emg -> 

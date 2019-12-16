@@ -73,7 +73,7 @@ NUGET
       FSharpAux.IO
       Newtonsoft.Json (>= 11.0.2)
   remote: paket-files/github.com/CSBiology/FSharp.Stats
-    FSharp.Stats (0.1.0)
+    FSharp.Stats (0.1.1)
   remote: paket-files/github.com/CSBiology/FSharpAux
     FSharpAux (0.0.15)
     FSharpAux.IO (0.0.15)
@@ -82,7 +82,7 @@ GIT
      (456f096ee9b48ad866c483590c86421ee300c857)
       path: /
   remote: https://github.com/CSBiology/FSharp.Stats.git
-     (2293a87e11e175f81af5bddab240b1638f220da0)
+     (d052affd15cd92ed5004c0067ee5181c723e2437)
       path: /
   remote: https://github.com/CSBiology/BioFSharp.git
      (f10f6fa500f451cf01a8a8107ec286c440beaed6)

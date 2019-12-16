@@ -1,3 +1,8 @@
+#### 0.1.1 - Thursday, December 12, 2019
+* Minor changes 
+
+#### 0.1.0 - Thursday, December 12, 2019
+*
 #### 0.0.117 - Friday, September 13, 2019
 * include faster hasFlag function
 * speed improvements in SequestLike: faster computation of theoretical spectra. 
