@@ -237,8 +237,7 @@ module Quantification =
             let modelF = 
                 match model with 
                 | Gaussian f -> f
-                | EMG f      -> f 
-                
+                | EMG f      -> f       
             try
                 let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 lowerBound upperBound xData yData |> Seq.last                                  
                 let y' = Array.map (fun xValue -> modelF.GetFunctionValue estParams xValue) xData
@@ -246,12 +245,12 @@ module Quantification =
                 Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y')
             with 
             | ex -> 
-                printfn "%A" ex
-                printfn "xData: %A" xData
-                printfn "yData: %A" yData
-                printfn "InitialParamGuess: %A" solverOptions.InitialParamGuess
-                printfn "lowerBound: %A" lowerBound
-                printfn "upperBound: %A" upperBound
+                //printfn "%A" ex
+                //printfn "xData: %A" xData
+                //printfn "yData: %A" yData
+                //printfn "InitialParamGuess: %A" solverOptions.InitialParamGuess
+                //printfn "lowerBound: %A" lowerBound
+                //printfn "upperBound: %A" upperBound
                 Option.None      
 
         ///

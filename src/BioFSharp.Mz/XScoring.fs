@@ -431,11 +431,14 @@ module XScoring =
             matches
             |> Array.map (optimizeAndromedaScore precursorMZ)
             |> Array.maxBy (fun x -> x.Score) 
-        let xTandemScore = 
+        let bestXTandem = 
             matches
             |> Array.maxBy (fun x -> x.Q) 
+        let xTandemScore = 
+            bestXTandem
             |> calcHyperScore
-        androScore,xTandemScore
+        let matchSum = bestXTandem.MatchedSum
+        androScore,xTandemScore,matchSum
 
     /// Converts the fragment ion ladders to a theoretical Sequestlike spectrum at a given charge state. 
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
@@ -462,12 +465,12 @@ module XScoring =
  
                                 // Calculates score for target sequence
                                 let theoSpec = theoreticalSpectrum.TheoSpec
-                                let targetScoreAndro,targetScoreXTandem = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec binnedRecSpec
+                                let targetScoreAndro,targetScoreXTandem,matchSum = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec binnedRecSpec
                                 let targetResultAndro = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScoreAndro.Score nan nan
                                 let targetResultXTandem = createSearchEngineResult SearchEngineResult.SearchEngine.XTandemLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod true scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL targetScoreXTandem nan nan
                                 
                                 let theoSpec_Decoy = theoreticalSpectrum.DecoyTheoSpec
-                                let decoyScoreAndro,decoyScoreXTandem =  scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec_Decoy binnedRecSpec
+                                let decoyScoreAndro,decoyScoreXTandem,matchSum = scoreTheoVsRecordedSpec scanlimits qMinAndMax matchingTolPPM isolationWindowTargetMz theoSpec_Decoy binnedRecSpec
                                 let decoyResultAndro = createSearchEngineResult SearchEngineResult.SearchEngine.AndromedaLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScoreAndro.Score nan nan
                                 let decoyResultXTandem = createSearchEngineResult SearchEngineResult.SearchEngine.XTandemLike spectrumID lookUpResult.ModSequenceID lookUpResult.PepSequenceID lookUpResult.GlobalMod false scanTime lookUpResult.StringSequence chargeState isolationWindowTargetMz ms_mass lookUpResult.Mass seqL decoyScoreXTandem nan nan
                                 

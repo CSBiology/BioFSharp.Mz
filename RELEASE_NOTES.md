@@ -1,3 +1,6 @@
+#### 0.1.2 - Thursday, December 12, 2019
+* Minor changes 
+
 #### 0.1.1 - Thursday, December 12, 2019
 * Minor changes 
 
