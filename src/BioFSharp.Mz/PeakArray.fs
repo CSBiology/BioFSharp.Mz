@@ -13,12 +13,12 @@ module PeakArray =
 
     /// Iterates the mz and intensity array and creates a Peak(mz,intensity) for each value pair. 
     /// Returns a new Peak array. 
-    let zipMzInt (mz:array<float>) (intensity:array<float>) : PeakArray<_> = 
+    let zip (mz:array<float>) (intensity:array<float>) : PeakArray<_> = 
         Array.map2 (fun m i -> Peak(m,i)) mz intensity
 
     /// Iterates the PeakArray and unzips the value fields of each peak into two seperate arrays, the first containing 
     /// the mz values, the second the intensities. 
-    let unzipMzInt (pkarr : PeakArray<_>) = 
+    let unzip (pkarr : PeakArray<_>) = 
         let n = pkarr.Length
         let mz     = Array.zeroCreate n
         let intens = Array.zeroCreate n
@@ -27,7 +27,11 @@ module PeakArray =
             intens.[i] <- pkarr.[i]
         mz,intens
     
-        
+    /// Creates a Peak(mz,intensity) for each value pair in mzIntensity. 
+    /// Returns a new PeakArray. 
+    let zipMzInt (mzIntensity:array<float*float>) : PeakArray<_> = 
+        Array.map (fun (m,i) -> Peak(m,i)) mzIntensity
+
     /// Bins peaks to their next upperIntegerMass bin
     let binToUpperIntergerMass (pkarr:PeakArray<_>) (minMassBoarder:int) (maxMassBoarder:int) = 
         let maxIndex = maxMassBoarder - minMassBoarder + 1

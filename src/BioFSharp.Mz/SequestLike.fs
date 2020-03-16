@@ -15,7 +15,7 @@ module SequestLike =
 
     /// normalize the intensities within a window to maximum of the window
     /// Attention shortens the array  (cuts)
-    let private windowNormalizeIntensities (intensities:Vector<float>) (numberOfWindows:int) =
+    let windowNormalizeIntensities (intensities:Vector<float>) (numberOfWindows:int) =
         // finds max within range
         let rec findMax (array:Vector<float>) (cMax:float) (lowerLimit:int) (counter:int)  =
             if counter < lowerLimit then
@@ -40,7 +40,7 @@ module SequestLike =
         tmpIntensities
     
     /// Predicts the intensity of a theoretical peak based on the given charge and iontype.
-    let private predictIntensitySimpleModel (ionType:Ions.IonTypeFlag) (charge:float) =
+    let predictIntensitySimpleModel (ionType:Ions.IonTypeFlag) (charge:float) =
         match ionType with 
         | ionT when hasFlag Ions.IonTypeFlag.Unknown    ionT -> 1.  / charge
         | ionT when hasFlag Ions.IonTypeFlag.Diagnostic ionT -> 1.  / charge
@@ -56,7 +56,7 @@ module SequestLike =
         | ionT when hasFlag Ions.IonTypeFlag.Z          ionT -> 0.2 / charge
         | _                                                  -> 0.2 / charge
 
-    let private setVectorInplace (vector:Vector<float>) charge maxIndex lowerScanLimit (taggedMass:TaggedMass.TaggedMass) = 
+    let setVectorInplace (vector:Vector<float>) charge maxIndex lowerScanLimit (taggedMass:TaggedMass.TaggedMass) = 
         let index = int(System.Math.Round (Mass.toMZ taggedMass.Mass charge) ) - lowerScanLimit 
         if index < maxIndex-1 && index > -1 then
             vector.[index] <- max vector.[index] (predictIntensitySimpleModel (taggedMass.Iontype) charge) 
@@ -76,7 +76,7 @@ module SequestLike =
         vector
 
     /// Computes the autocorrelation of the vector +/- plusMinusMaxDelay.
-    let private autoCorrelation (plusMinusMaxDelay:int) (vector:Vector<float>) =
+    let autoCorrelation (plusMinusMaxDelay:int) (vector:Vector<float>) =
         let shifted (vector:Vector<float>) (tau:int) =
             vector
             |> Vector.mapi
@@ -127,7 +127,7 @@ module SequestLike =
     /// Measured spectrum to sequest-like normalized intensity array
     /// minus auto-correlation (delay 75 -> like in original sequest algorithm)
     /// ! Uses 10 as number of windows for window normalization (like in original sequest algorithm)    
-    let private spectrumToIntensityArrayMinusAutoCorrelation (lowerScanLimit,upperScanLimit) (spectrum:PeakArray<_>) =
+    let spectrumToIntensityArrayMinusAutoCorrelation (lowerScanLimit,upperScanLimit) (spectrum:PeakArray<_>) =
         let si  = PeakArray.peaksToNearestUnitDaltonBinVector spectrum lowerScanLimit upperScanLimit
         let nsi = windowNormalizeIntensities si 10    
         let nsi' = autoCorrelation 75 nsi
@@ -135,11 +135,17 @@ module SequestLike =
 
 
     /// Calculates the Cross-Correlation of p_nis and ms_nis
-    let private calcXCorr (p_nis:Vector<float>) (ms_nis:Vector<float>) =
+    let calcXCorr (p_nis:Vector<float>) (ms_nis:Vector<float>) =
         let tmp = Vector.dot p_nis ms_nis 
         if tmp < 0. then 0. else tmp 
 
-
+    /// Substracts Auto Correlation of measured normalized intensity spectrum (ms_nis). Subsequently, 
+    /// the Cross-Correlation of the predicted normalized intensity spectrum (p_nis) and ms_nis is calculated. 
+    let scoreSingle (p_nis:Vector<float>) (ms_nis:Vector<float>)  =
+        let ms_nis' = autoCorrelation 75 ms_nis
+        (ms_nis - ms_nis') 
+        |> calcXCorr p_nis 
+        
     /// Converts the fragment ion ladders to a theoretical Sequestlike spectrum at a given charge state. 
     /// Subsequently, the spectrum is binned to the nearest mz bin (binwidth = 1 Da). Filters out peaks 
     /// that are not within the scanLimits.
