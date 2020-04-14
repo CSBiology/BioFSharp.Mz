@@ -161,7 +161,7 @@ module Quantification =
             let left  = zipped |> Array.exists (fun (x,y) -> x < p.Apex.XVal && y > 0.2 * p.Apex.YVal) 
             let right = zipped |> Array.exists (fun (x,y) -> x > p.Apex.XVal && y > 0.2 * p.Apex.YVal)
             left && right
-
+            
         ///
         let estimateMoments (p: IdentifiedPeak ) =
             if estimatePeakIntegrity p then 
@@ -195,14 +195,16 @@ module Quantification =
             EstimatedParams             : float []
             StandardErrorOfPrediction   : float
             YPredicted                  : float []
+            Area                        : float
             }
 
         ///
-        let createFittedPeak model estimatedParams standardErrorOfPrediction yPredicted = {
+        let createFittedPeak model estimatedParams standardErrorOfPrediction yPredicted area = {
             Model                       = model                       
             EstimatedParams             = estimatedParams            
             StandardErrorOfPrediction   = standardErrorOfPrediction  
             YPredicted                  = yPredicted                 
+            Area                        = area
             }
 
         type QuantifiedPeak = {
@@ -226,12 +228,36 @@ module Quantification =
 
         /// Return Option
         let getPeakBy (peaks:IdentifiedPeak []) x =
-            let isPartOfPeak x (p:IdentifiedPeak)  = 
-                if p.LeftEnd.XVal < x && p.RightEnd.XVal > x then true else false       
+            let isPartOfPeak x (p:IdentifiedPeak) = p.LeftEnd.XVal < x && p.RightEnd.XVal > x 
             match Array.tryFind (isPartOfPeak x) peaks with
             | Some p        ->  p
             | Option.None   -> Array.minBy (fun p -> abs(p.Apex.XVal - x)) peaks 
-      
+
+        ///
+        let integralOfGaussian (coeffs:vector ) =
+            sqrt(2.) * coeffs.[0] * coeffs.[2] * sqrt(Math.PI)
+
+        ///
+        let integralOfEMGBy meanX sigma tau intensityAtx xPos =    
+            let fst = intensityAtx * (sqrt(Math.PI)*tau)
+            let intg =         
+                let firstT = sqrt(Math.PI) / 2.
+                let errorF = 
+                    ((xPos-meanX)/(sqrt(2.)*sigma)) - (sigma/(sqrt(2.)*tau))
+                    |> FSharp.Stats.SpecialFunctions.Errorfunction.Erf
+                firstT * (1.+errorF)
+            let exp = exp ( 0.5*((sigma/tau)**2.) - ((xPos-meanX)/tau) )
+            fst / (intg * exp)
+
+        ///
+        let calcArea model (estParams:vector) =
+            match model with 
+            | Gaussian f -> 
+                integralOfGaussian estParams
+            | EMG      f -> 
+                let intensityAtx = f.GetFunctionValue estParams estParams.[1]
+                integralOfEMGBy estParams.[1] estParams.[2] estParams.[3] intensityAtx estParams.[1]
+
         ///
         let tryFit model solverOptions lowerBound upperBound xData yData =
             let modelF = 
@@ -241,17 +267,14 @@ module Quantification =
             try
                 let estParams = estimatedParamsVerbose modelF solverOptions 0.001 10.0 lowerBound upperBound xData yData |> Seq.last                                  
                 let y' = Array.map (fun xValue -> modelF.GetFunctionValue estParams xValue) xData
-                let sEoE_Gauss = standardErrorOfPrediction (float solverOptions.InitialParamGuess.Length) y' yData
-                Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y')
+                let sEoE_Gauss = NonLinearRegression'.standardErrorOfPrediction (float solverOptions.InitialParamGuess.Length) y' yData
+                let area = calcArea model estParams
+                if nan.Equals area || infinity.Equals area || infinity.Equals (area * -1.) || nan.Equals sEoE_Gauss then 
+                    Option.None 
+                else
+                    Option.Some (createFittedPeak model (estParams.ToArray()) sEoE_Gauss y' area)
             with 
-            | ex -> 
-                //printfn "%A" ex
-                //printfn "xData: %A" xData
-                //printfn "yData: %A" yData
-                //printfn "InitialParamGuess: %A" solverOptions.InitialParamGuess
-                //printfn "lowerBound: %A" lowerBound
-                //printfn "upperBound: %A" upperBound
-                Option.None      
+            | ex -> Option.None      
 
         ///
         let tryFitGaussian initAmp initMeanX initStdev xData yData =
@@ -278,39 +301,6 @@ module Quantification =
         let selectModel (models: FittedPeak []) = 
             Array.minBy (fun (x:FittedPeak) -> x.StandardErrorOfPrediction) models
 
-        ///
-        let integralOfGaussian (coeffs:float []) =
-            sqrt(2.) * coeffs.[0] * coeffs.[2] * sqrt(Math.PI)
-
-        ///
-        let integralOfEMGBy meanX sigma tau intensityAtx xPos =    
-            let fst = intensityAtx * (sqrt(Math.PI)*tau)
-            let intg =         
-                let firstT = sqrt(Math.PI) / 2.
-                let errorF = 
-                    ((xPos-meanX)/(sqrt(2.)*sigma)) - (sigma/(sqrt(2.)*tau))
-                    |> FSharp.Stats.SpecialFunctions.Errorfunction.Erf
-                firstT * (1.+errorF)
-            let exp = exp ( 0.5*((sigma/tau)**2.) - ((xPos-meanX)/tau) )
-            fst / (intg * exp)
-
-        ///
-        let calcArea (fit: FittedPeak) =
-            ///
-            let integralOfGaussianOf (fit:FittedPeak) =
-                integralOfGaussian fit.EstimatedParams
-            ///
-            let integralOfEMGOf (fit:FittedPeak) =
-                let pF = 
-                    match fit.Model with 
-                    | EMG f -> f
-                    | _     -> failwith "fittedPeak was not fitted with emg"
-                let intensityAtx = pF.GetFunctionValue (fit.EstimatedParams |> vector) fit.EstimatedParams.[1]
-                integralOfEMGBy fit.EstimatedParams.[1] fit.EstimatedParams.[2] fit.EstimatedParams.[3] intensityAtx fit.EstimatedParams.[1]
-            match fit.Model with 
-            | Gaussian _ -> integralOfGaussianOf fit
-            | EMG      _ -> integralOfEMGOf fit
-
 
         ///
         let quantifyPeak (p: IdentifiedPeak ) =
@@ -321,11 +311,9 @@ module Quantification =
                 match gaussian, emg with 
                 | Some g, Some emg -> 
                     let finalFit   = selectModel [|g;emg|]
-                    let area       = calcArea finalFit
-                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area p.Apex.YVal
+                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction finalFit.Area p.Apex.YVal
                 | Some finalFit, Option.None  | Option.None, Some finalFit -> 
-                    let area       = calcArea finalFit
-                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction area p.Apex.YVal
+                    createQuantifiedPeak  (Some finalFit.Model) finalFit.YPredicted finalFit.EstimatedParams finalFit.StandardErrorOfPrediction finalFit.Area  p.Apex.YVal
                 | _                       ->
                     let area = trapezEstAreaOf p.XData p.YData
                     createQuantifiedPeak Option.None [||] [||] nan area p.Apex.YVal

@@ -1,5 +1,6 @@
 #### 0.1.3 - Monday, March 16, 2020
 * Minor changes 
+* Quantification: improved handling of unsuccessful fits
 
 #### 0.1.2 - Thursday, December 12, 2019
 * Minor changes 

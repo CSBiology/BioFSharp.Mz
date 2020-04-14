@@ -5,6 +5,16 @@ open FSharp.Stats.Signal
 open System
 
 
+module NonLinearRegression' = 
+    ///
+    let standardErrorOfPrediction dOF (predicted:float []) (actual:float [])  =
+        let n = actual.Length-1 |> float 
+        match n with
+        | x when x > dOF -> 
+            let sumOfResSq = Array.fold2 (fun acc yReal yPred  -> acc + ((yPred-yReal)**2.) ) 0.0  actual predicted
+            sqrt( (sumOfResSq / (n - dOF)))
+        | _             -> nan
+
 module PeakDetection = 
 
     module Wavelet = 
