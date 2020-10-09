@@ -2,31 +2,11 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
- 
+#r "paket: groupref FakeBuild //"
 
-#r "paket:
-nuget BlackFox.Fake.BuildTask
-nuget Fake.Core.Target
-nuget Fake.Core.Process
-nuget Fake.Core.ReleaseNotes
-nuget Fake.IO.FileSystem
-nuget Fake.DotNet.Cli
-nuget Fake.DotNet.MSBuild
-nuget Fake.DotNet.AssemblyInfoFile
-nuget Fake.DotNet.Paket
-nuget Fake.DotNet.FSFormatting
-nuget Fake.DotNet.Fsi
-nuget Fake.DotNet.NuGet
-nuget Fake.Api.Github
-nuget Fake.DotNet.Testing.Expecto //"
+#load "./.fake/build.fsx/intellisense.fsx"
 
- 
 
-#load ".fake/build.fsx/intellisense.fsx"
-
- 
-
-open BlackFox.Fake
 open System.IO
 open Fake.Core
 open Fake.Core.TargetOperators
@@ -39,8 +19,6 @@ open Fake.DotNet.Testing
 open Fake.Tools
 open Fake.Api
 open Fake.Tools.Git
-
- 
 
 [<AutoOpen>]
 module TemporaryDocumentationHelpers =
@@ -121,7 +99,7 @@ let summary = "BioFSharp.Mz - modular computational proteomics"
 let description = "BioFSharp.Mz - modular computational proteomics"
 
 // List of author names (for NuGet package)
-let author = "David Zimmer, Timo Mühlhaus"
+let author = "David Zimmer, Timo MÃ¼hlhaus"
 
 // Tags for your project (for NuGet package)
 let tags = "proteomics FSharp massspec computational"
@@ -274,7 +252,7 @@ Target.create "RunTests" (fun _ ->
 Target.create "NuGet" (fun _ ->
     Paket.pack(fun p ->
         { p with
-            ToolType = ToolType.CreateLocalTool()
+            ToolPath=".paket/paket.exe"
             OutputPath = "bin"
             Version = release.NugetVersion
             ReleaseNotes = String.toLines release.Notes})
@@ -306,7 +284,7 @@ let githubLink = sprintf "https://github.com/%s/%s" github_release_user gitName
 // Specify more information about your project
 let info =
   [ "project-name", "BioFSharp.Mz"
-    "project-author", "David Zimmer, Timo Mühlhaus"
+    "project-author", "David Zimmer, Timo MÃ¼hlhaus"
     "project-summary", "BioFSharp.Mz - modular computational proteomics"
     "project-github", githubLink
     "project-nuget", "http://nuget.org/packages/BioFSharp.Mz" ]
@@ -536,4 +514,3 @@ Target.create "All" ignore
   ==> "ReleaseLocal"
 
 Target.runOrDefaultWithArguments "All"
-
