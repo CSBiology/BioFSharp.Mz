@@ -1210,6 +1210,51 @@ module SearchDB =
                     [aa]
                                                               
         
+        //let addProteinTerminalModifications minPos maxPos (modLookUp:ModLookUp) (digPep: DigestedPeptide<'a>) =    
+        //    ///
+        //    let modifyNTerminal (aal: AminoAcid list) = 
+        //        match aal with 
+        //        | []      -> []
+        //        | h::tail -> 
+        //            AminoAcidWithFlag h 
+        //            |> setFixModByLookUp modLookUp.ProtNTermAndResidualFixed 
+        //            |> setVarModByLookUp modLookUp.ProtNTermAndResidualVariable  
+        //            |> List.map (fun item -> (item.AminoAcid)::tail)                              
+        //    ///
+        //    let modifyCTerminal (aal: AminoAcid list) = 
+        //        let rec loop acc (aal: AminoAcid list) =
+        //            match aal with 
+        //            | h::[]   -> 
+        //                AminoAcidWithFlag h 
+        //                |> setFixModByLookUp modLookUp.ProtCTermAndResidualFixed 
+        //                |> setVarModByLookUp modLookUp.ProtCTermAndResidualVariable
+        //                |> List.map (fun item -> ((item.AminoAcid)::acc) |> List.rev )
+        //            | h::tail -> loop (h::acc) tail
+
+        //        loop [] aal             
+
+        //    if digPep.CleavageStart = minPos && digPep.CleavageEnd = maxPos then
+        //        let modifiedPeps = 
+        //            digPep.PepSequence
+        //            |> modifyNTerminal
+        //            |> List.collect modifyCTerminal
+        //            |> List.map (fun modS -> {digPep with PepSequence = modS})
+        //        modifiedPeps
+        //    elif digPep.CleavageStart = minPos then
+        //        let modifiedPeps = 
+        //            digPep.PepSequence
+        //            |> modifyNTerminal
+        //            |> List.map (fun modS -> {digPep with PepSequence = modS})
+        //        modifiedPeps
+        //    elif digPep.CleavageEnd = maxPos then
+        //        let modifiedPeps = 
+        //            digPep.PepSequence
+        //            |> modifyCTerminal
+        //            |> List.map (fun modS -> {digPep with PepSequence = modS})
+        //        modifiedPeps 
+        //    else
+        //        [digPep]
+
         let addProteinTerminalModifications minPos maxPos (modLookUp:ModLookUp) (digPep: DigestedPeptide<'a>) =    
             ///
             let modifyNTerminal (aal: AminoAcid list) = 
@@ -1233,28 +1278,35 @@ module SearchDB =
 
                 loop [] aal             
 
-            if digPep.CleavageStart = minPos && digPep.CleavageEnd = maxPos then
-                let modifiedPeps = 
-                    digPep.PepSequence
-                    |> modifyNTerminal
-                    |> List.collect modifyCTerminal
-                    |> List.map (fun modS -> {digPep with PepSequence = modS})
-                modifiedPeps
-            elif digPep.CleavageStart = minPos then
-                let modifiedPeps = 
-                    digPep.PepSequence
-                    |> modifyNTerminal
-                    |> List.map (fun modS -> {digPep with PepSequence = modS})
-                modifiedPeps
-            elif digPep.CleavageEnd = maxPos then
-                let modifiedPeps = 
-                    digPep.PepSequence
-                    |> modifyCTerminal
-                    |> List.map (fun modS -> {digPep with PepSequence = modS})
-                modifiedPeps 
-            else
-                [digPep]
-                                    
+            let modify peptide = 
+                if digPep.CleavageStart = minPos && digPep.CleavageEnd = maxPos then
+                    let modifiedPeps = 
+                        peptide.PepSequence
+                        |> modifyNTerminal
+                        |> List.collect modifyCTerminal
+                        |> List.map (fun modS -> {peptide with PepSequence = modS})
+                    modifiedPeps
+                elif digPep.CleavageStart = minPos then
+                    let modifiedPeps = 
+                        peptide.PepSequence
+                        |> modifyNTerminal
+                        |> List.map (fun modS -> {peptide with PepSequence = modS})
+                    modifiedPeps
+                elif digPep.CleavageEnd = maxPos then
+                    let modifiedPeps = 
+                        peptide.PepSequence
+                        |> modifyCTerminal
+                        |> List.map (fun modS -> {peptide with PepSequence = modS})
+                    modifiedPeps 
+                else
+                    [peptide]
+
+            match digPep.CleavageStart,digPep.PepSequence with 
+            | 0, AminoAcid.Met::b::tail -> 
+                (modify digPep)@(modify {digPep with CleavageStart=1; PepSequence = b::tail})     
+            | _ -> 
+                (modify digPep)
+
         /// Returns a list of all possible modified petide sequences and its masses according to the given modification-lookUp.
         /// It uses the given bioitem -> mass function and a function to aggregate the sequence.
         let combine (modLookUp:ModLookUp) threshold (massfunction:IBioItem -> float) seqfunction state (aal: AminoAcid list) =
