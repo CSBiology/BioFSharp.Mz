@@ -299,6 +299,101 @@ let tests =
                     fm.DecoyMasses
                     fmRev.TargetMasses
                 // The decoy is the standard reversed-decoy convention; its fragment set must be exactly the target fragment set of the reversed input - cross-consistency, no mass constants involved.
+
+            testCase "pseudoReverse keeps the C-terminal residue and reverses the rest" <| fun _ ->
+                let oxMet = AminoAcids.setModification (SearchDB.getModBy SearchDB.Table.oxidation'Met') AminoAcids.Met
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Ala; AminoAcids.Gly; AminoAcids.Ser; AminoAcids.Lys])
+                    [AminoAcids.Ser; AminoAcids.Gly; AminoAcids.Ala; AminoAcids.Lys]
+                    "AGSK becomes SGAK"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Ala; oxMet; AminoAcids.Gly; AminoAcids.Lys])
+                    [AminoAcids.Gly; oxMet; AminoAcids.Ala; AminoAcids.Lys]
+                    "the oxidation moves with its Met"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Ala; AminoAcids.Gly; oxMet])
+                    [AminoAcids.Gly; AminoAcids.Ala; oxMet]
+                    "a modified C-terminal residue stays in place with its modification"
+                Expect.equal (Fragmentation.Series.pseudoReverse ([]: AminoAcids.AminoAcid list)) [] "the empty sequence stays empty"
+
+            testCase "pseudoReverse falls back to the reversed sequence for pseudo-palindromes" <| fun _ ->
+                let oxMet = AminoAcids.setModification (SearchDB.getModBy SearchDB.Table.oxidation'Met') AminoAcids.Met
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Lys])
+                    [AminoAcids.Lys; AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Ala]
+                    "AAAK pseudo-reverses to itself, so the decoy is KAAA"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Gly; AminoAcids.Ala; AminoAcids.Gly; AminoAcids.Lys])
+                    [AminoAcids.Lys; AminoAcids.Gly; AminoAcids.Ala; AminoAcids.Gly]
+                    "GAGK pseudo-reverses to itself, so the decoy is KGAG"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Ala; AminoAcids.Ala])
+                    [AminoAcids.Ala; AminoAcids.Ala]
+                    "AA equals its pseudo-reversal and its reversal and stays as it is"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [AminoAcids.Lys])
+                    [AminoAcids.Lys]
+                    "a single residue stays as it is"
+                Expect.equal
+                    (Fragmentation.Series.pseudoReverse [oxMet; AminoAcids.Met; AminoAcids.Lys])
+                    [AminoAcids.Met; oxMet; AminoAcids.Lys]
+                    "residues are compared with their modifications, so M[ox]MK is no pseudo-palindrome"
+
+            testCase "fragmentMassesPseudoReversed gives the decoy b and y ions of the pseudo-reversed sequence" <| fun _ ->
+                // AGSK -> SGAK; residue masses S 87.03203, G 57.02146, A 71.03711, K 128.09496, water 18.010565
+                let fm = Fragmentation.Series.fragmentMassesPseudoReversed Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf [AminoAcids.Ala; AminoAcids.Gly; AminoAcids.Ser; AminoAcids.Lys]
+                let byType flag = fm.DecoyMasses |> List.filter (fun f -> f.MainPeak.Iontype = flag) |> mainMasses |> List.sort
+                let b = byType Ions.IonTypeFlag.B
+                let y = byType Ions.IonTypeFlag.Y
+                Expect.equal b.Length 4 "decoy b1 to b4"
+                Expect.equal y.Length 4 "decoy y1 to y4"
+                expectWithin 0.001 b.[0] 87.03203 "decoy b1 is S"
+                expectWithin 0.001 b.[1] 144.05349 "decoy b2 is SG"
+                expectWithin 0.001 b.[2] 215.0906 "decoy b3 is SGA"
+                expectWithin 0.001 y.[0] 146.105525 "decoy y1 is K + water, as in the target"
+                expectWithin 0.001 y.[1] 217.142635 "decoy y2 is AK + water"
+                expectWithin 0.001 y.[2] 274.164095 "decoy y3 is GAK + water"
+                expectWithin 0.001 b.[3] 343.18556 "decoy b4 holds every residue"
+
+            testCase "fragmentMassesPseudoReversed shifts the decoy ions that contain a modified residue" <| fun _ ->
+                let oxMet = AminoAcids.setModification (SearchDB.getModBy SearchDB.Table.oxidation'Met') AminoAcids.Met
+                let plain = Fragmentation.Series.fragmentMassesPseudoReversed Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf [AminoAcids.Ala; AminoAcids.Met; AminoAcids.Gly; AminoAcids.Lys]
+                let modified = Fragmentation.Series.fragmentMassesPseudoReversed Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf [AminoAcids.Ala; oxMet; AminoAcids.Gly; AminoAcids.Lys]
+                let byType flag (fm: Fragmentation.FragmentMasses) = fm.DecoyMasses |> List.filter (fun f -> f.MainPeak.Iontype = flag) |> mainMasses |> List.sort
+                // decoy GMAK: b1 = G, b2 = GM, b3 = GMA; y1 = K, y2 = AK, y3 = MAK (+ water)
+                let bPlain, bModified = byType Ions.IonTypeFlag.B plain, byType Ions.IonTypeFlag.B modified
+                let yPlain, yModified = byType Ions.IonTypeFlag.Y plain, byType Ions.IonTypeFlag.Y modified
+                expectWithin 1e-9 bModified.[0] bPlain.[0] "decoy b1 (G) does not contain the Met"
+                expectWithin 0.001 (bModified.[1] - bPlain.[1]) 15.994915 "decoy b2 (GM) carries the oxidation"
+                expectWithin 0.001 (bModified.[2] - bPlain.[2]) 15.994915 "decoy b3 (GMA) carries the oxidation"
+                expectWithin 1e-9 yModified.[0] yPlain.[0] "decoy y1 (K) does not contain the Met"
+                expectWithin 1e-9 yModified.[1] yPlain.[1] "decoy y2 (AK) does not contain the Met"
+                expectWithin 0.001 (yModified.[2] - yPlain.[2]) 15.994915 "decoy y3 (MAK) carries the oxidation"
+                expectWithin 0.001 bPlain.[0] 57.02146 "decoy b1 is G"
+
+            testCase "fragmentMassesPseudoReversed uses the reversed sequence for pseudo-palindromes" <| fun _ ->
+                let aaak = [AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Lys]
+                let pseudo = Fragmentation.Series.fragmentMassesPseudoReversed Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf aaak
+                let full = Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf aaak
+                let project (fams: PeakFamily<TaggedMass.TaggedMass> list) =
+                    fams |> List.map (fun f -> f.MainPeak.Iontype, f.MainPeak.Mass, f.DependentPeaks |> List.map (fun p -> p.Iontype, p.Mass))
+                Expect.equal (project pseudo.DecoyMasses) (project full.DecoyMasses) "the decoy of AAAK is KAAA, the reversed sequence"
+                Expect.notEqual (project pseudo.DecoyMasses) (project pseudo.TargetMasses) "the decoy ions differ from the target ions"
+
+            testCase "fragmentMassesPseudoReversed has the target masses of fragmentMasses" <| fun _ ->
+                let oxMet = AminoAcids.setModification (SearchDB.getModBy SearchDB.Table.oxidation'Met') AminoAcids.Met
+                let project (fams: PeakFamily<TaggedMass.TaggedMass> list) =
+                    fams |> List.map (fun f -> f.MainPeak.Iontype, f.MainPeak.Mass, f.DependentPeaks |> List.map (fun p -> p.Iontype, p.Mass))
+                [ ags
+                  [AminoAcids.Ser; AminoAcids.Thr; AminoAcids.Glu; AminoAcids.Asp; AminoAcids.Arg]
+                  [AminoAcids.Ala; oxMet; AminoAcids.Gln; AminoAcids.Asn; AminoAcids.Lys]
+                  [AminoAcids.Ala; AminoAcids.Ala; AminoAcids.Lys] ]
+                |> List.iter (fun aal ->
+                    let pseudo = Fragmentation.Series.fragmentMassesPseudoReversed Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf aal
+                    let full = Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf aal
+                    let decoy = Fragmentation.Series.fragmentMasses Fragmentation.Series.bOfBioList Fragmentation.Series.yOfBioList mf (Fragmentation.Series.pseudoReverse aal)
+                    Expect.equal (project pseudo.TargetMasses) (project full.TargetMasses) (sprintf "target masses of %A match fragmentMasses" aal)
+                    Expect.equal (project pseudo.DecoyMasses) (project decoy.TargetMasses) (sprintf "decoy masses of %A are the target masses of its pseudo-reversal, neutral losses included" aal))
         ]
 
         testList "Laddering" [

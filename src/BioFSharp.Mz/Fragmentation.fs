@@ -316,7 +316,38 @@ module Fragmentation =
                 let nTerm = nTerminalSeries massFunction (aal |> List.rev)
                 let cTerm = cTerminalSeries massFunction (aal |> List.rev)
                 nTerm@cTerm
-            createFragmentMasses targetMasses decoyMasses        
+            createFragmentMasses targetMasses decoyMasses
+
+        /// Returns the pseudo-reversed sequence: the C-terminal residue stays in place and the rest is reversed,
+        /// so PEPTIDEK becomes EDITPEPK. A modified residue moves together with its modifications, as in List.rev.
+        /// If the result equals the input (a pseudo-palindrome such as AAAAK), the reversed sequence is returned
+        /// instead, and if that equals the input as well, the input is returned.
+        /// Keeping the C-terminal residue suits proteases that cleave C-terminally, such as Trypsin or LysC. For a
+        /// protease that cleaves N-terminally, the N-terminal residue would have to stay in place instead.
+        let pseudoReverse (sequence: 'T list) =
+            match List.rev sequence with
+            | [] -> []
+            | cTerminal :: rest as reversed ->
+                let pseudoReversed = rest @ [cTerminal]
+                if pseudoReversed = sequence then reversed else pseudoReversed
+
+        /// Returns the fragment masses of the amino acid sequence specified by aal like fragmentMasses, but the decoy
+        /// masses are those of the pseudo-reversed sequence (see pseudoReverse) instead of the reversed sequence.
+        /// The ionseries are specified by functions "nTerminalSeries" and "cTerminalSeries". The mass accuracy is
+        /// determined by the massfunction applied. These decoys keep the C-terminal residue, which suits proteases
+        /// that cleave C-terminally.
+        let inline fragmentMassesPseudoReversed nTerminalSeries cTerminalSeries (massFunction:IBioItem -> float) (aal:AminoAcids.AminoAcid list) =
+            let targetMasses =
+                let nTerm = nTerminalSeries massFunction aal
+                let cTerm = cTerminalSeries massFunction aal
+                nTerm@cTerm
+            let decoyMasses =
+                let decoy = pseudoReverse aal
+                let nTerm = nTerminalSeries massFunction decoy
+                let cTerm = cTerminalSeries massFunction decoy
+                nTerm@cTerm
+            createFragmentMasses targetMasses decoyMasses
+
     [<Struct>]
     type LadderedTaggedMass  =
         {
