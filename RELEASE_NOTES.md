@@ -1,3 +1,7 @@
+#### Unreleased
+
+* Fragmentation: add Series.pseudoReverse, which keeps the C-terminal residue of a sequence and reverses the rest (the reversed sequence if that gives the sequence itself), and Series.fragmentMassesPseudoReversed, whose decoy masses are those of the pseudo-reversed sequence instead of the reversed one. The decoys keep the cleavage site of proteases that cleave C-terminally
+
 #### 0.2.2 (Released 2026-09-28)
 
 * SearchDB: read the parameters of search databases digested with ProteomIQon's proteases (Trypsin/P, LysC, LysC/P, Chymotrypsin, PepsinA) back with their cleavage rules through the new proteaseByName; reading them failed before because BioFSharp's protease table does not know these names. An unknown protease name now gives an error that names it
