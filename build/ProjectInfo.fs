@@ -26,7 +26,22 @@ let website = "/BioFSharp.Mz"
 
 let pkgDir = "pkg"
 
-let release = ReleaseNotes.load "RELEASE_NOTES.md"
+/// Reads release notes that may start with an "Unreleased" section without a version. That
+/// section is skipped, so the version comes from the uppermost entry that has a version.
+let loadReleaseNotes (path: string) =
+    let isHeading (line: string) = line.TrimStart().StartsWith "#"
+    let isUnreleased (line: string) =
+        isHeading line && System.String.Equals(line.Trim().TrimStart('#').Trim(), "Unreleased", System.StringComparison.OrdinalIgnoreCase)
+    let lines = System.IO.File.ReadAllLines path |> Array.toList |> List.skipWhile System.String.IsNullOrWhiteSpace
+    let released =
+        match lines with
+        | first :: rest when isUnreleased first -> rest |> List.skipWhile (isHeading >> not)
+        | _ -> lines
+    if List.isEmpty released then
+        failwithf "%s has no entry with a version below its Unreleased section." path
+    ReleaseNotes.parse released
+
+let release = loadReleaseNotes "RELEASE_NOTES.md"
 
 let stableVersion = SemVer.parse release.NugetVersion
 
