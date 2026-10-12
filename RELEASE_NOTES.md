@@ -1,4 +1,4 @@
-#### Unreleased
+#### 0.2.3 (Released 2026-10-12)
 
 * Fragmentation: add Series.pseudoReverse, which keeps the C-terminal residue of a sequence and reverses the rest (the reversed sequence if that gives the sequence itself), and Series.fragmentMassesPseudoReversed, whose decoy masses are those of the pseudo-reversed sequence instead of the reversed one. The decoys keep the cleavage site of proteases that cleave C-terminally
 
